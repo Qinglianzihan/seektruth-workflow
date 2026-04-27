@@ -90,24 +90,24 @@ export function writeStwFiles(rootDir, environment, conflicts) {
 
   // STW-Workspace.md
   const workspace = readTemplate("STW-Workspace.md")
-    .replace(/\{\{GENERATED_AT\}\}/g, new Date().toLocaleString())
-    .replace(/\{\{AI_TOOLS_SUMMARY\}\}/g, makeAIToolsSummary(environment.aiTools))
-    .replace(/\{\{MCP_SUMMARY\}\}/g, makeMcpSummary(environment.mcpConfigs))
-    .replace(/\{\{SKILLS_SUMMARY\}\}/g, makeSkillsSummary(environment.skills))
-    .replace(/\{\{PROJECT_TYPE\}\}/g, environment.project?.type || "Unknown")
-    .replace(/\{\{MCP_TABLE\}\}/g, makeMcpTable(environment.mcpConfigs))
-    .replace(/\{\{SKILLS_TABLE\}\}/g, makeSkillsTable(environment.skills))
-    .replace(/\{\{CONFLICT_WARNINGS\}\}/g, makeConflictWarnings(conflicts));
+    .replaceAll(/\{\{GENERATED_AT\}\}/g, new Date().toLocaleString())
+    .replaceAll(/\{\{AI_TOOLS_SUMMARY\}\}/g, makeAIToolsSummary(environment.aiTools))
+    .replaceAll(/\{\{MCP_SUMMARY\}\}/g, makeMcpSummary(environment.mcpConfigs))
+    .replaceAll(/\{\{SKILLS_SUMMARY\}\}/g, makeSkillsSummary(environment.skills))
+    .replaceAll(/\{\{PROJECT_TYPE\}\}/g, environment.project?.type || "Unknown")
+    .replaceAll(/\{\{MCP_TABLE\}\}/g, makeMcpTable(environment.mcpConfigs))
+    .replaceAll(/\{\{SKILLS_TABLE\}\}/g, makeSkillsTable(environment.skills))
+    .replaceAll(/\{\{CONFLICT_WARNINGS\}\}/g, makeConflictWarnings(conflicts));
   writeFileSync(join(stwDir, "STW-Workspace.md"), workspace);
 
   // Analysis-Template.md
   const analysis = readTemplate("Analysis-Template.md")
-    .replace(/\{\{DATE\}\}/g, now);
+    .replaceAll(/\{\{DATE\}\}/g, now);
   writeFileSync(join(stwDir, "Analysis-Template.md"), analysis);
 
   // Summary-Template.md
   const summary = readTemplate("Summary-Template.md")
-    .replace(/\{\{DATE\}\}/g, now);
+    .replaceAll(/\{\{DATE\}\}/g, now);
   writeFileSync(join(stwDir, "Summary-Template.md"), summary);
 
   // 审查员 agent 定义文件（可选模板，不存在则跳过）

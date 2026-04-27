@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, createReadStream } 
 import { createInterface } from "node:readline";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { getErrorInsights } from "./error-registry.js";
 
 const HISTORY_PATH = join(homedir(), ".claude", "history.jsonl");
 const STATS_FILE = ".stw/stats.json";
@@ -123,6 +124,22 @@ export async function generateStatsReport(rootDir) {
     }
   } else {
     lines.push("    暂无记录。使用 stw stats --log-tokens <数量> [备注] 添加。");
+  }
+
+  // Error insights
+  const insights = getErrorInsights(rootDir);
+  if (insights.total > 0) {
+    lines.push("  错误病例统计:");
+    lines.push(`    总计: ${insights.total} 条`);
+    const phases = Object.entries(insights.byPhase)
+      .sort((a, b) => parseInt(a[0]) - parseInt(b[0]))
+      .map(([p, c]) => `阶段${p}(${c})`)
+      .join(", ");
+    if (phases) lines.push(`    按阶段: ${phases}`);
+    if (insights.topTags.length > 0) {
+      lines.push(`    常见类型: ${insights.topTags.join(", ")}`);
+    }
+    lines.push("");
   }
 
   lines.push("");

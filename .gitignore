@@ -1,15 +1,17 @@
 # 依赖
 node_modules/
 
-# 开发临时文件
-.stw/.progress.json
-.stw/stats.json
+# 构建产物（stw init 在目标项目的输出，保留 reports 可追踪）
+.stw/config.json
+.stw/STW-Workspace.md
+.stw/Analysis-Template.md
+.stw/Summary-Template.md
 .stw/lockdown.json
+.stw/stats.json
+.stw/.progress.json
 .stw/test-results.json
 .stw/test-passed
-
-# 测试产生的报告（保留 .gitkeep，排除测试数据）
-.stw/reports/summary-*.md
+.stw/.gitkeep
 
 # 系统
 .DS_Store

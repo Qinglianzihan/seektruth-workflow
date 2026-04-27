@@ -1,18 +1,11 @@
-import { describe, it, before, after } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { scanSkills } from "../../src/scout/skill-scanner.js";
-
-function freshDir() {
-  return join(tmpdir(), "stw-skill-" + Date.now());
-}
+import { freshDir, writeFile } from "../test-helper.js";
 
 function makeSkill(dir, relPath, name, desc) {
-  const full = join(dir, relPath);
-  mkdirSync(full, { recursive: true });
-  writeFileSync(join(full, "SKILL.md"), `---\nname: ${name}\ndescription: "${desc}"\n---\n\n# ${name}\n`);
+  writeFile(dir, join(relPath, "SKILL.md"), `---\nname: ${name}\ndescription: "${desc}"\n---\n\n# ${name}\n`);
 }
 
 describe("Skill Scanner", () => {
@@ -43,9 +36,7 @@ describe("Skill Scanner", () => {
 
   it("ignores files without YAML frontmatter", () => {
     const dir = freshDir();
-    const skillsDir = join(dir, ".claude", "skills", "no-frontmatter");
-    mkdirSync(skillsDir, { recursive: true });
-    writeFileSync(join(skillsDir, "README.md"), "# Just a readme\nNo frontmatter here.");
+    writeFile(dir, ".claude/skills/no-frontmatter/README.md", "# Just a readme\nNo frontmatter here.");
     const skills = scanSkills(dir);
     const found = skills.find((s) => s.name === "no-frontmatter");
     assert.equal(found, undefined);

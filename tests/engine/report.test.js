@@ -1,18 +1,12 @@
-import { describe, it, before, after } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, writeFileSync, rmSync, readFileSync, existsSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { archiveReport, listReports, getRecentSummaries } from "../../src/engine/report.js";
-
-function freshDir() {
-  const dir = join(tmpdir(), "stw-report-" + Date.now());
-  mkdirSync(join(dir, ".stw"), { recursive: true });
-  return dir;
-}
+import { freshDir, writeStwFile } from "../test-helper.js";
 
 function writeSummary(dir, content) {
-  writeFileSync(join(dir, ".stw", "Summary-Template.md"), content);
+  writeStwFile(dir, "Summary-Template.md", content);
 }
 
 describe("Report — archiveReport", () => {

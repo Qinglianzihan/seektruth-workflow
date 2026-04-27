@@ -1,20 +1,10 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { scanMcpConfigs, getBuiltinMcpServers } from "../../src/scout/mcp-scanner.js";
-
-function freshDir() {
-  const dir = join(tmpdir(), "stw-mcp-" + Date.now());
-  mkdirSync(dir, { recursive: true });
-  return dir;
-}
+import { freshDir, writeFile } from "../test-helper.js";
 
 function writeMcp(dir, relPath, data) {
-  const full = join(dir, relPath);
-  mkdirSync(join(full, ".."), { recursive: true });
-  writeFileSync(full, JSON.stringify(data));
+  writeFile(dir, relPath, JSON.stringify(data));
 }
 
 describe("MCP Scanner — scanMcpConfigs", () => {

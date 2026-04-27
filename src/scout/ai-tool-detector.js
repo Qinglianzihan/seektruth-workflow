@@ -27,10 +27,13 @@ export function detectAiTools() {
     tools.push({ name: "Codex CLI", source: "config_dir" });
   }
 
-  // Cline (via VSCode extension config)
-  const clinePath = join(homedir(), ".vscode-oss", "extensions", "cline");
-  if (existsSync(clinePath)) {
-    tools.push({ name: "Cline", source: "extension_dir" });
+  // Cline (via VSCode/VSCode-OSS/VSCode-Insiders extension config)
+  for (const vsDir of [".vscode", ".vscode-oss", ".vscode-insiders"]) {
+    const clinePath = join(homedir(), vsDir, "extensions", "cline");
+    if (existsSync(clinePath)) {
+      tools.push({ name: "Cline", source: "extension_dir" });
+      break;
+    }
   }
 
   return tools;

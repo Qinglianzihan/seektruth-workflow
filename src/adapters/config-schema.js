@@ -31,6 +31,12 @@ export function createDefaultConfig() {
       warnings: [],        // [{ message }]
     },
 
+    // 置信度门禁
+    confidenceGate: {
+      enabled: true,
+      threshold: 6,
+    },
+
     // 武器库快照（MCP + Skills 的摘要，用于生成 STW-Workspace.md）
     arsenal: {
       mcpSummary: "",

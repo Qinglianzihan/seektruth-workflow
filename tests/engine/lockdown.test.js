@@ -1,18 +1,10 @@
-import { describe, it, before, after } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, writeFileSync, rmSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { parseAttackZones, generateLockdown } from "../../src/engine/lockdown.js";
-
-function freshDir() {
-  const dir = join(tmpdir(), "stw-lockdown-" + Date.now());
-  mkdirSync(join(dir, ".stw"), { recursive: true });
-  return dir;
-}
+import { freshDir, writeStwFile } from "../test-helper.js";
 
 function writeWorkspace(dir, content) {
-  writeFileSync(join(dir, ".stw", "STW-Workspace.md"), content);
+  writeStwFile(dir, "STW-Workspace.md", content);
 }
 
 describe("Lockdown — parseAttackZones", () => {

@@ -1,5 +1,7 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { parseAttackZones } from "./lockdown.js";
+import { assessConfidence } from "./confidence-gate.js";
 
 export const PHASES = [
   { id: 1, name: "调查研究", nameEn: "Investigate", deliverable: ".stw/Analysis-Template.md" },
@@ -37,6 +39,7 @@ export function getCurrentPhase(rootDir) {
     phaseInfo: PHASES.find((p) => p.id === progress.phase) || null,
     startedAt: progress.startedAt,
     completedPhases: progress.completedPhases || [],
+    iterations: progress.iterations || [],
   };
 }
 
@@ -45,6 +48,7 @@ export function startSession(rootDir) {
     phase: 1,
     startedAt: new Date().toISOString(),
     completedPhases: [],
+    iterations: [],
   };
   writeProgress(rootDir, data);
   return getCurrentPhase(rootDir);
@@ -52,19 +56,7 @@ export function startSession(rootDir) {
 
 function deliverableExists(rootDir, deliverable) {
   if (deliverable === "任务聚焦声明") {
-    // Check for actual ATTACK_ZONE declarations (not template example)
-    const wsPath = join(rootDir, ".stw", "STW-Workspace.md");
-    if (!existsSync(wsPath)) return false;
-    const content = readFileSync(wsPath, "utf-8");
-    // Match <!-- ATTACK_ZONE: <path> --> not inside a code block
-    const lines = content.split("\n");
-    let inCodeBlock = false;
-    for (const line of lines) {
-      if (line.trimStart().startsWith("```")) { inCodeBlock = !inCodeBlock; continue; }
-      if (inCodeBlock) continue;
-      if (/<!--\s*ATTACK_ZONE\s*:/.test(line)) return true;
-    }
-    return false;
+    return parseAttackZones(rootDir).length > 0;
   }
   if (deliverable === "测试通过") {
     // Check for test-results.json (AI-generated test evidence)
@@ -106,6 +98,34 @@ export function advancePhase(rootDir) {
     };
   }
 
+  // Confidence gate: phase 1→2
+  if (progress.phase === 1) {
+    const configPath = join(rootDir, ".stw", "config.json");
+    let gateEnabled = true;
+    let threshold = 6;
+    if (existsSync(configPath)) {
+      try {
+        const config = JSON.parse(readFileSync(configPath, "utf-8"));
+        if (config.confidenceGate) {
+          gateEnabled = config.confidenceGate.enabled !== false;
+          threshold = config.confidenceGate.threshold ?? 6;
+        }
+      } catch { /* use defaults */ }
+    }
+
+    if (gateEnabled) {
+      const { ready, score, gaps } = assessConfidence(rootDir);
+      if (!ready || score < threshold) {
+        const gapList = gaps.length > 0 ? `\n${gaps.map((g) => `  · ${g}`).join("\n")}` : "";
+        return {
+          ok: false,
+          error: `战前评估不充分 (${score}/10，需要 ≥ ${threshold}) — 不打无把握之仗`,
+          required: `补充以下章节:${gapList}`,
+        };
+      }
+    }
+  }
+
   // Check if this is the last phase
   if (progress.phase >= PHASES.length) {
     // Mark session as complete
@@ -121,4 +141,48 @@ export function advancePhase(rootDir) {
 
   const nextPhase = PHASES.find((p) => p.id === progress.phase);
   return { ok: true, done: false, phase: nextPhase };
+}
+
+export function rollbackSession(rootDir, reason) {
+  const progress = readProgress(rootDir);
+  if (!progress) {
+    return { ok: false, error: "当前没有活跃的任务。" };
+  }
+  if (progress.phase <= 1) {
+    return { ok: false, error: "已在阶段 1，无法继续回退。运行 stw abort 中止任务。" };
+  }
+
+  // Record the iteration (the phase we are rolling back FROM)
+  if (!progress.iterations) progress.iterations = [];
+  progress.iterations.push({
+    phase: progress.phase,
+    reason: reason || "未说明原因",
+    timestamp: new Date().toISOString(),
+  });
+
+  // Reset to phase 1, keep completedPhases as historical record
+  progress.phase = 1;
+  writeProgress(rootDir, progress);
+
+  return {
+    ok: true,
+    phase: 1,
+    iterations: progress.iterations.length,
+    history: progress.iterations,
+  };
+}
+
+export function abortSession(rootDir) {
+  const progress = readProgress(rootDir);
+  if (!progress) {
+    return { ok: false, error: "没有活跃的任务可中止。" };
+  }
+  // Remove progress file to reset session
+  const path = progressPath(rootDir);
+  try {
+    rmSync(path);
+  } catch {
+    return { ok: false, error: "无法删除进度文件。" };
+  }
+  return { ok: true };
 }
