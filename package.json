@@ -1,18 +1,36 @@
 {
   "name": "seektruth-workflow",
-  "version": "0.0.1",
-  "description": "将《毛泽东选集》哲学方法论转化为 AI 编程的结构化工作纪律",
+  "version": "0.1.0",
+  "description": "将《毛泽东选集》哲学方法论转化为 AI 编程的结构化工作纪律 — CLI 工具",
   "type": "module",
   "bin": {
     "stw": "bin/stw.js"
   },
+  "files": [
+    "bin/",
+    "src/",
+    "templates/"
+  ],
   "engines": {
     "node": ">=18"
   },
   "scripts": {
-    "test": "node --test tests/**/*.test.js"
+    "test": "node --test tests/**/*.test.js",
+    "prepublishOnly": "npm test"
   },
+  "keywords": [
+    "claude-code",
+    "ai-coding",
+    "workflow",
+    "seektruth",
+    "philosophy",
+    "mao-zedong"
+  ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0"
   }
