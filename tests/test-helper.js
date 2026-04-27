@@ -34,8 +34,11 @@ export function writeFile(dir, relPath, content) {
 export function writePassingAnalysis(dir) {
   writeStwFile(dir, "Analysis-Template.md",
     "## 0. 战前评估\n8/10\n\n" +
+    "## 0.5 需求澄清 — 向用户提问\nQuestions for the user about what they really need.\n\n" +
     "## 1. 任务背景\nThis is a test task background describing the problem to solve in enough detail.\n\n" +
+    "## 1.0 表层需求 → 深层需求（透过现象看本质）\nUser said fix the bug. Actually need to understand root cause and hidden constraints.\n\n" +
     "## 1.5 项目风格侦察（从群众中来）\nScanned the project and found consistent patterns in naming, imports, and error handling throughout.\n\n" +
+    "## 1.6 外部调研 — 最佳实践与前人成果\nResearched similar implementations and found established patterns to follow.\n\n" +
     "| 维度 | 既有模式 | 示例出处 |\n" +
     "| :--- | :--- | :--- |\n" +
     "| 命名规范 | camelCase functions | (state-machine.js:34) |\n" +

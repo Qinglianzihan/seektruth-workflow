@@ -34,13 +34,16 @@ export function assessConfidence(rootDir) {
   const gaps = [];
 
   const steps = [
+    { label: "需求澄清 — 向用户提问", marker: "## 0.5 需求澄清" },
+    { label: "表层需求 → 深层需求 — 透过现象看本质", marker: "## 1.0 表层需求" },
     { label: "项目风格侦察 — 从群众中来", marker: "## 1.5 项目风格侦察" },
+    { label: "外部调研 — 最佳实践与前人成果", marker: "## 1.6 外部调研" },
     { label: "去粗 — 过滤噪音", marker: "## 2.1 去粗" },
     { label: "取精 — 提取精华", marker: "## 2.2 取精" },
     { label: "去伪 — 消除假象", marker: "## 2.3 去伪" },
     { label: "存真 — 保留真相", marker: "## 2.4 存真" },
     { label: "由此及彼 — 追溯关联", marker: "## 2.5 由此及彼" },
-    { label: "由表及里 — 直达根因", marker: "## 2.6 由表及里" },
+    { label: "由表及里 — 直达根因 + 隐含约束", marker: "## 2.6 由表及里" },
     { label: "初步方案", marker: "## 4. 初步方案" },
     { label: "变更计划声明", marker: "## 4.5 变更计划声明" },
   ];

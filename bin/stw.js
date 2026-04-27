@@ -20,6 +20,7 @@ import { getStats, generateStatsReport, logTokens } from "../src/engine/stats.js
 import { getRelatedErrors } from "../src/engine/error-registry.js";
 import { deepScanMcp } from "../src/scout/mcp-deep-scanner.js";
 import { injectQuote } from "../src/engine/quote-injector.js";
+import { PHASE_STORIES, ERROR_FRIENDLY, STATUS_EMPTY } from "../src/engine/messages.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8"));
@@ -123,40 +124,37 @@ const cmdStatus = () => {
     const current = getCurrentPhase(rootDir);
 
     if (!current) {
-      console.log("📭 当前没有活跃的任务。运行 stw start 开始一个新任务。");
+      console.log(`\n${STATUS_EMPTY}`);
       return;
     }
 
     const { phase, phaseInfo, startedAt, completedPhases } = current;
-    console.log(`\n📊 当前进度\n`);
-    console.log(`  开始时间: ${new Date(startedAt).toLocaleString()}`);
-
-    if (phase === "complete") {
-      console.log(`\n  ✅ 所有阶段已完成！`);
-      return;
-    }
-
-    console.log(`  当前阶段: ${phase}/${PHASES.length}`);
-
-    // Elapsed time
     const elapsed = Date.now() - new Date(startedAt).getTime();
     const hours = Math.floor(elapsed / 3600000);
     const minutes = Math.floor((elapsed % 3600000) / 60000);
     const timeStr = hours > 0 ? `${hours}小时${minutes}分钟` : `${minutes}分钟`;
-    console.log(`  运行时长: ${timeStr}${hours >= 2 ? " ⚠️ 长会话" : ""}`);
+
+    if (phase === "complete") {
+      console.log(`\n🎉 全部完成！历时约 ${timeStr}。`);
+      console.log("  准备好了就开始下一个任务：stw start --desc \"...\"");
+      return;
+    }
+
+    console.log(`\n📊 进度：阶段 ${phase}/5  ·  已进行 ${timeStr}`);
 
     for (const p of PHASES) {
       const done = completedPhases.includes(p.id);
       const active = p.id === phase;
-      const icon = done ? "✅" : active ? "▶️ " : "⏳";
-      console.log(`  ${icon} 阶段 ${p.id}: ${p.name}${active ? ` (${p.deliverable})` : ""}`);
+      const icon = done ? "✅" : active ? "➤" : "·";
+      const extra = active ? ` ← 你在这里` : "";
+      console.log(`  ${icon} ${p.id}. ${p.name}${extra}`);
     }
 
     if (current.iterations && current.iterations.length > 0) {
-      console.log(`\n  🌊 迭代历史: ${current.iterations.length} 次回滚`);
+      console.log(`\n🌊 已回滚 ${current.iterations.length} 次`);
       const config = getSessionConfig(rootDir);
       if (config.maxIterations > 0 && current.iterations.length >= config.maxIterations) {
-        console.log(`  ⚠️  回滚次数已达阈值 (${config.maxIterations})，建议 checkpoint 或重新开始。`);
+        console.log(`  ⚠️ 回滚次数已达阈值 (${config.maxIterations})，建议 checkpoint 重新开始。`);
       }
       const lastIterations = current.iterations.slice(-3);
       for (const entry of lastIterations) {
@@ -223,42 +221,50 @@ const cmdStart = () => {
     }
 
     startSession(rootDir, taskDescription);
-    const phase1 = PHASES[0];
 
-    console.log(`\n🚀 新任务已开始 — 阶段 1：${phase1.name}\n`);
+    const story = PHASE_STORIES[1];
+    console.log(`
+╔══════════════════════════════════════════════╗
+║                                              ║
+║   🔍  阶段 1：${story.title}                      ║
+║                                              ║
+║   "${story.quote}"    ║
+║   —— ${story.source}                          ║
+║                                              ║
+╚══════════════════════════════════════════════╝
+`);
+    console.log(story.intro);
+    console.log("");
 
     if (taskDescription) {
-      console.log(`   📋 任务描述: ${taskDescription}`);
-      console.log(`      请对照此描述检查后续变更是否偏离原始需求。\n`);
+      console.log(`📋 你要做的事：${taskDescription}\n`);
     }
 
-    // Load recent summaries as "历史经验"
+    // 历史经验
     const recent = getRecentSummaries(rootDir, 3);
     if (recent.length > 0) {
-      console.log("   📚 历史经验（最近总结报告摘要）：");
+      console.log("📚 之前积累的经验：");
       for (const r of recent) {
-        console.log(`      · ${r.title}`);
-        if (r.snippet) console.log(`        ${r.snippet}`);
-        if (r.lessons) console.log(`        📖 ${r.lessons}`);
-        if (r.cognitiveInsights) console.log(`        🧠 ${r.cognitiveInsights}`);
+        console.log(`   · ${r.title}`);
+        if (r.lessons) console.log(`     💡 ${r.lessons}`);
       }
       console.log("");
     }
 
-    // 加载关联错误（惩前毖后）
+    // 历史病历
     const recentErrors = getRelatedErrors(rootDir, [], 3);
     if (recentErrors.length > 0) {
-      console.log("   🏥 历史病历（最近错误记录）：");
+      console.log("🏥 之前踩过的坑（别重蹈覆辙）：");
       for (const e of recentErrors) {
-        console.log(`      · [阶段${e.phase}] ${e.description}`);
-        if (e.resolution) console.log(`        处方: ${e.resolution}`);
+        console.log(`   · ${e.description}`);
+        if (e.resolution) console.log(`     → ${e.resolution}`);
       }
       console.log("");
     }
 
-    console.log("   请将 .stw/STW-Workspace.md 的全部内容作为系统提示提供给 AI 编程助手。");
-    console.log("   AI 应首先完成「调查研究」阶段，填写 .stw/Analysis-Template.md。\n");
-    console.log("   完成阶段 1 后，运行 stw next 进入阶段 2。");
+    console.log("👉 现在该做什么：\n");
+    console.log(story.aiAction);
+    console.log(`\n👉 ${story.nextStep}`);
   } catch (err) {
     console.error(`\n❌ start 失败: ${err.message}`);
     process.exit(1);
@@ -267,10 +273,10 @@ const cmdStart = () => {
 };
 
 const phaseGuidance = {
-  1: "完成调研后，运行 stw next 推进（将自动进行战前评估，阈值 6/10）。调研不充分不进入下一阶段。",
-  2: "已在 STW-Workspace.md 中声明 ATTACK_ZONE，专注封锁清单自动生成。AI 不得修改封锁区域外的任何文件。需求未变化？对照 Analysis-Template.md 确认。",
-  3: "运行测试套件验证修改的正确性，确保全部通过。stw next 时将自动检查 git diff 是否越界。需求未变化？对照 Analysis-Template.md 确认。",
-  4: "填写 .stw/Summary-Template.md 中的总结报告，记录认知迭代。需求未变化？对照 Analysis-Template.md 确认。推进前确认：测试结果真实、修改覆盖完整、无密钥泄露。",
+  1: "AI 填写完分析报告后告诉我 /stw next，我会检查调研质量。",
+  2: "在 .stw/STW-Workspace.md 末尾加 <!-- ATTACK_ZONE: 你的文件 --> 来划定作战区域，然后 /stw next。",
+  3: "告诉 AI 按变更计划改代码、跑测试。全部通过后 /stw next，我会检查越界和变更计划。",
+  4: "测试无误后创建 .stw/test-results.json，然后 /stw next。我会列出人工核查清单。",
 };
 
 const cmdNext = () => {
@@ -279,100 +285,122 @@ const cmdNext = () => {
     const current = getCurrentPhase(rootDir);
 
     if (!current) {
-      console.log("📭 当前没有活跃的任务。运行 stw start 开始。");
+      console.log(`\n${STATUS_EMPTY}`);
       return;
     }
 
     if (current.phase === "complete") {
-      console.log("✅ 所有阶段已完成。运行 stw start 开始新任务。");
+      console.log("\n🎉 所有阶段都已完成！要不要开始一个新任务？\n\n  stw start --desc \"你的新任务\"");
       return;
     }
 
     // scope-check flag
     const nextArgs = process.argv.slice(3);
     if (nextArgs.includes("--scope-check")) {
-      console.log("\n  🔍 范围检查:");
-      console.log("     请对照 Analysis-Template.md 中的任务背景和变更计划，");
-      console.log("     确认当前工作是否仍在原始范围内。");
+      console.log("\n🔍 跑偏检查——");
+      console.log("  打开 Analysis-Template.md，看看你最初写下的任务背景。");
+      console.log("  现在做的事情，还在那个范围内吗？");
       if (current.taskDescription) {
-        console.log(`     原始任务: ${current.taskDescription}`);
+        console.log(`  原始任务：${current.taskDescription}`);
       }
-      console.log("     需求未变化？继续推进。有变化？考虑 stw rollback 重新规划。\n");
+      console.log("  没偏？继续。/stw next。偏了？/stw rollback 重新规划。\n");
     }
 
     const result = advancePhase(rootDir);
 
     if (!result.ok) {
-      console.log(`\n❌ ${result.error}`);
-      if (result.required) {
-        console.log(`   需要: ${result.required}`);
+      // 友好化错误输出
+      const err = result.error || "";
+      if (err.includes("没有活跃的任务")) {
+        console.log(`\n${STATUS_EMPTY}`);
+      } else if (err.includes("交付物未完成")) {
+        const phase = current.phase;
+        const phaseInfo = PHASES.find((p) => p.id === phase);
+        console.log(`\n🛑 等一下——\n`);
+        console.log(`   阶段 ${phase}（${phaseInfo?.name}）的交付物还没准备好。`);
+        console.log(`   需要：${result.required}\n`);
+        console.log(`   不知道怎么填？打开 .stw/ 目录看看模板文件，里面有注释指南。`);
+        console.log(`   搞定了告诉我：/stw next`);
+      } else if (err.includes("战前评估")) {
+        console.log(`\n📋 调研还不够扎实——\n${result.required}`);
+      } else if (err.includes("越界")) {
+        console.log(`\n🚫 越界了——\n${result.error}\n\n${result.required}`);
+      } else if (err.includes("变更计划")) {
+        console.log(`\n📝 变更计划有问题——\n${result.error}\n\n${result.required}`);
+      } else {
+        console.log(`\n❌ ${result.error}`);
+        if (result.required) console.log(`   ${result.required}`);
       }
       return;
     }
 
     if (result.done) {
-      console.log(`\n🎉 所有阶段已完成！`);
-      console.log("   运行 stw report 生成总结报告。");
+      console.log(`
+🎉 全部完成！从调查研究到总结转化，五阶段一气呵成。
+
+   总结经验教训已归档。下次 stw start 会自动加载。
+   准备好了就开始下一个任务吧：
+
+     stw start --desc "你的新任务"
+`);
       return;
     }
 
     const next = result.phase;
-    const guide = phaseGuidance[next.id];
+    const story = PHASE_STORIES[next.id];
 
-    console.log(`\n✅ 阶段 ${next.id - 1} 完成！`);
-    console.log(`\n🚀 进入阶段 ${next.id}：${next.name}\n`);
+    // Phase header
+    console.log(`
+╔══════════════════════════════════════════════╗
+║                                              ║
+║   🔍  阶段 ${next.id}：${story.title}                      ║
+║                                              ║
+║   "${story.quote}"    ║
+║   —— ${story.source}                          ║
+║                                              ║
+╚══════════════════════════════════════════════╝
+`);
+    console.log(story.intro);
+    console.log("");
 
-    // Task description reminder
     if (current.taskDescription) {
-      console.log(`   📋 原始任务: ${current.taskDescription}`);
-      console.log(`   ⚠️ 需求未变化？对照 Analysis-Template.md 确认。\n`);
+      console.log(`📋 你的任务：${current.taskDescription}\n`);
     }
 
-    // Auto-generate lockdown.json when entering phase 3
+    // Phase-specific extras
     if (next.id === 3) {
       const lockdown = generateLockdown(rootDir);
       const zones = lockdown.attackZones;
       if (zones.length > 0) {
-        console.log(`   🔒 专注封锁已生成 (${lockdown.attackZones.length} 个作战区域):`);
-        for (const z of zones) {
-          console.log(`      · ${z}`);
-        }
-        console.log(`     封锁文件: .stw/lockdown.json`);
-        console.log(`     ⚠️  AI 不得修改 ATTACK_ZONE 声明外的任何文件！`);
-        console.log("");
+        console.log("🔒 作战区域已锁定：");
+        for (const z of zones) console.log(`   · ${z}`);
+        console.log("\n   AI 只能改这些文件。动其他的？门都没有。\n");
       } else {
-        console.log(`   ⚠️  未检测到 ATTACK_ZONE 声明。请确保在 STW-Workspace.md 中声明作战区域。\n`);
+        console.log("⚠️ 还没声明 ATTACK_ZONE。在 STW-Workspace.md 里加上，然后重新 /stw next。\n");
       }
     }
 
-    // Human verification when entering phase 5
     if (next.id === 5) {
       const testResults = readTestResults(rootDir);
       if (testResults) {
-        console.log("   🧪 测试结果:");
-        if (testResults.total !== undefined) {
-          console.log(`      用例总数: ${testResults.total}`);
-          if (testResults.passed !== undefined) console.log(`      通过: ${testResults.passed}`);
-          if (testResults.failed !== undefined) console.log(`      失败: ${testResults.failed}`);
-        }
-        if (testResults.suite) console.log(`      框架: ${testResults.suite}`);
+        console.log("🧪 测试战报：");
+        if (testResults.total) console.log(`   用例 ${testResults.total} 个，通过 ${testResults.passed ?? "?"} 个`);
+        if (testResults.failed) console.log(`   失败 ${testResults.failed} 个`);
         console.log("");
       }
-      console.log("   🔍 人工核查（实践检验的最终环节）:");
-      console.log("      1. 确认测试结果真实有效，而非伪造");
-      console.log("      2. 检查修改是否完整覆盖了任务需求");
-      console.log("      3. 验证变更计划中的每个文件都已修改");
-      console.log("      4. 确认无敏感信息泄露（密钥、密码等）");
-      console.log("      5. 对照 .stw/Summary-Template.md 填写总结");
-      console.log("");
+      console.log("🔍 最后一步——人工核查（别偷懒）：");
+      console.log("   1. 测试是真的跑过了，不是伪造的？");
+      console.log("   2. 改的东西和原始任务对得上？");
+      console.log("   3. 变更计划里的文件都改了？");
+      console.log("   4. 没把密码、密钥写进代码吧？");
+      console.log("   5. Summary-Template.md 填好了吗？\n");
     }
 
-    if (guide) {
-      console.log(`   👉 ${guide}`);
-    }
-    console.log(`\n   完成阶段 ${next.id} 后，运行 stw next 继续。`);
+    console.log("👉 现在该做什么：\n");
+    console.log(story.aiAction);
+    console.log(`\n👉 ${story.nextStep}`);
   } catch (err) {
-    console.error(`\n❌ next 失败: ${err.message}`);
+    console.error(`\n❌ 出错了: ${err.message}`);
     process.exit(1);
   }
   console.log(injectQuote(rootDir));
@@ -423,20 +451,16 @@ const cmdRollback = () => {
     const reason = process.argv.slice(3).join(" ") || "未说明原因";
     const result = rollbackSession(rootDir, reason);
     if (!result.ok) {
-      console.log(`\n❌ ${result.error}`);
+      console.log(`\n${result.error}`);
       return;
     }
-    console.log(`\n🌊 已回滚到阶段 1 — 波浪式前进，螺旋式上升`);
-    console.log(`   回滚原因: ${reason}`);
-    console.log(`   累计迭代: ${result.iterations} 次`);
-    if (result.history && result.history.length > 0) {
-      console.log("   历次回滚:");
-      for (const entry of result.history) {
-        const d = new Date(entry.timestamp).toLocaleString();
-        console.log(`     · 阶段${entry.phase} → ${entry.reason} (${d})`);
-      }
-    }
-    console.log("\n   请重新分析问题，更新 .stw/Analysis-Template.md 后运行 stw next。");
+    console.log(`\n🌊 已回退到阶段 1`);
+    console.log(`   原因：${reason}`);
+    console.log(`   这是第 ${result.iterations} 次回退。\n`);
+    console.log("   毛爷爷说：波浪式前进，螺旋式上升。");
+    console.log("   每次回退不是失败，是认知升级。\n");
+    console.log("   重新打开 Analysis-Template.md，基于新的理解修改调研报告。");
+    console.log("   准备好了就：/stw next");
   } catch (err) {
     console.error(`\n❌ rollback 失败: ${err.message}`);
     process.exit(1);
@@ -449,11 +473,11 @@ const cmdAbort = () => {
   try {
     const result = abortSession(rootDir);
     if (!result.ok) {
-      console.log(`\n❌ ${result.error}`);
+      console.log(`\n${result.error}`);
       return;
     }
-    console.log("\n🛑 当前任务已中止。运行 stw start 开始新任务。");
-    console.log("  💡 如果工作目录有未提交变更，请先提交或 stash 再开始新任务。");
+    console.log("\n🛑 任务已中止。这个任务的进度已清空。");
+    console.log("  准备好了随时开始新的：stw start --desc \"...\"");
   } catch (err) {
     console.error(`\n❌ abort 失败: ${err.message}`);
     process.exit(1);
