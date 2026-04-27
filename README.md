@@ -41,47 +41,47 @@ stw next                            # 按流程推进，AI 完成每阶段交付
 
 ## 在 AI 编程工具中使用
 
-### Claude Code（原生集成）
+`stw init` 自动检测当前环境中的 AI 工具，为每种工具注入对应的项目配置文件，AI 会话自动加载工作流规范。
 
-`stw init` 检测到 Claude Code 后自动配置：
+### 工具支持一览
 
-- **`/stw` 命令** — 对话中直接 `/stw status`、`/stw next`，无需切出终端
-- **CLAUDE.md 注入** — 工作流规范自动写入项目 `CLAUDE.md`，每次会话自动加载
+| 工具 | 自动注入方式 | 命令执行方式 |
+|:---|:---|:---|
+| **Claude Code** | `CLAUDE.md` + `.claude/skills/stw.md` | 对话中 `/stw status`、`/stw next` |
+| **Codex CLI** | `AGENTS.md` | 终端 `stw next` |
+| **Cursor** | `.cursorrules` | 终端 `stw next` |
+| **Cline** | `.clinerules` | 终端 `stw next` |
+| **OpenCode** | `OPenCODE.md` | 终端 `stw next` |
 
-```bash
-stw init              # 自动配置 Skill + CLAUDE.md
-stw start --desc "添加用户认证"
-
-# Claude 已自动加载工作流规范，你只需在对话中：
-#   1. 让 Claude 按阶段 1 完成调研
-#   2. 输入 /stw next   ← 在对话中直接推进！
-#   3. 输入 /stw status ← 查看进度
-```
-
-工作节奏：
-
-```
-  你: "按 STW 规范完成阶段 1 调查研究"
-Claude: [阅读代码，填写 Analysis-Template.md]
-  你: /stw next         ← 置信度门禁自动检查
-Claude: [阶段 2 声明 ATTACK_ZONE]
-  你: /stw next
-Claude: [阶段 3 修改代码]
-  你: /stw next         ← 越界+变更计划+依赖检查
-  ...                    ← 测试、人工核查、总结
-```
-
-### Codex / 其他工具
-
-将 `.stw/STW-Workspace.md` 内容粘贴到系统提示或项目指令中。工作流命令在终端执行：
+### 通用流程
 
 ```bash
-stw next     # 门禁检查
-stw rollback 需求变化，重新调研
-stw report   # 归档总结
+stw init              # 一次性：生成 .stw/ + 自动注入工具配置
+stw start --desc "任务描述"
+
+# → 告诉 AI: "读取 .stw/STW-Workspace.md，按规范完成任务"
+# → AI 填写分析报告、修改代码
+# → 你运行 stw next 把关（Claude Code 用户可直接 /stw next）
 ```
 
-关键点不变：**AI 执行，你 `/stw next` 把关**。
+**核心不变**：AI 负责执行，`stw next` 负责把关。门禁不通过，AI 继续改。
+
+### Claude Code（对话中操作）
+
+```bash
+stw init    # 自动创建 Skill + CLAUDE.md
+```
+
+然后在对话中：
+
+```
+/STW status     ← 直接在对话中推进！
+/STW next       ← 门禁自动检查
+/STW rollback   ← 需求变化回退
+/STW report     ← 归档总结
+```
+
+不需要切回终端，一气呵成。
 
 ---
 

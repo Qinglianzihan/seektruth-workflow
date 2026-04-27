@@ -27,6 +27,12 @@ export function detectAiTools() {
     tools.push({ name: "Codex CLI", source: "config_dir" });
   }
 
+  // OpenCode
+  const OPENCODE_DIR = join(homedir(), ".opencode");
+  if (existsSync(OPENCODE_DIR)) {
+    tools.push({ name: "OpenCode", source: "config_dir" });
+  }
+
   // Cline (via VSCode/VSCode-OSS/VSCode-Insiders extension config)
   for (const vsDir of [".vscode", ".vscode-oss", ".vscode-insiders"]) {
     const clinePath = join(homedir(), vsDir, "extensions", "cline");

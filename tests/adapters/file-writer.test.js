@@ -175,4 +175,40 @@ describe("File Writer — Claude Code integration", () => {
     assert.ok(!existsSync(join(dir, ".claude")));
     assert.ok(!existsSync(join(dir, "CLAUDE.md")));
   });
+
+  it("creates AGENTS.md when Codex CLI detected", () => {
+    const dir = freshDir();
+    const env = { project: null, aiTools: [{ name: "Codex CLI", source: "test" }], mcpConfigs: [], skills: [] };
+    writeStwFiles(dir, env, EMPTY_CONFLICTS);
+    const path = join(dir, "AGENTS.md");
+    assert.ok(existsSync(path));
+    assert.ok(readFileSync(path, "utf-8").includes("STW 工作流规范"));
+  });
+
+  it("creates .cursorrules when Cursor detected", () => {
+    const dir = freshDir();
+    const env = { project: null, aiTools: [{ name: "Cursor", source: "test" }], mcpConfigs: [], skills: [] };
+    writeStwFiles(dir, env, EMPTY_CONFLICTS);
+    const path = join(dir, ".cursorrules");
+    assert.ok(existsSync(path));
+    assert.ok(readFileSync(path, "utf-8").includes("STW 工作流规范"));
+  });
+
+  it("creates .clinerules when Cline detected", () => {
+    const dir = freshDir();
+    const env = { project: null, aiTools: [{ name: "Cline", source: "test" }], mcpConfigs: [], skills: [] };
+    writeStwFiles(dir, env, EMPTY_CONFLICTS);
+    const path = join(dir, ".clinerules");
+    assert.ok(existsSync(path));
+    assert.ok(readFileSync(path, "utf-8").includes("STW 工作流规范"));
+  });
+
+  it("creates OPenCODE.md when OpenCode detected", () => {
+    const dir = freshDir();
+    const env = { project: null, aiTools: [{ name: "OpenCode", source: "test" }], mcpConfigs: [], skills: [] };
+    writeStwFiles(dir, env, EMPTY_CONFLICTS);
+    const path = join(dir, "OPenCODE.md");
+    assert.ok(existsSync(path));
+    assert.ok(readFileSync(path, "utf-8").includes("STW 工作流规范"));
+  });
 });

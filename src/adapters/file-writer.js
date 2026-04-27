@@ -116,37 +116,96 @@ export function writeStwFiles(rootDir, environment, conflicts) {
   if (existsSync(reviewerMd)) copyFileSync(reviewerMd, join(stwDir, "审查员.md"));
   if (existsSync(reviewerClaudeMd)) copyFileSync(reviewerClaudeMd, join(stwDir, "审查员.claude.md"));
 
-  // Claude Code 集成：如果检测到 Claude Code，自动配置 Skill + CLAUDE.md
-  const hasClaudeCode = environment.aiTools.some((t) => t.name === "Claude Code");
-  if (hasClaudeCode) {
-    // 1. Skill: 用户可在对话中直接 /stw status、/stw next 等
-    const skillsDir = join(rootDir, ".claude", "skills");
-    mkdirSync(skillsDir, { recursive: true });
-    const skillTemplate = join(TEMPLATES_DIR, "stw-skill.md");
-    if (existsSync(skillTemplate)) {
-      copyFileSync(skillTemplate, join(skillsDir, "stw.md"));
+  // AI 工具集成：为检测到的每个工具自动注入 STW 工作流规范
+  const TOOL_BOOTSTRAPS = {
+    "Claude Code": {
+      files: ["CLAUDE.md"],
+      content: [
+        "<!-- STW 工作流规范（由 stw init 自动生成） -->",
+        "",
+        "## 求是工作流",
+        "",
+        "读取 `.stw/STW-Workspace.md`，严格按照五阶段规范执行所有任务。",
+        "对话中使用 `/stw status` 查看进度，`/stw next` 推进阶段。",
+        "",
+      ],
+      skill: true,
+    },
+    "Codex CLI": {
+      files: ["AGENTS.md"],
+      content: [
+        "<!-- STW 工作流规范（由 stw init 自动生成） -->",
+        "",
+        "## 求是工作流",
+        "",
+        "读取 `.stw/STW-Workspace.md`，严格按照五阶段规范执行所有任务。",
+        "在终端中运行 `stw status` 查看进度，`stw next` 推进阶段。",
+        "",
+      ],
+    },
+    Cursor: {
+      files: [".cursorrules"],
+      content: [
+        "<!-- STW 工作流规范（由 stw init 自动生成） -->",
+        "",
+        "读取 `.stw/STW-Workspace.md`，严格按照五阶段规范执行所有任务。",
+        "在终端中运行 `stw status` 查看进度，`stw next` 推进阶段。",
+        "",
+      ],
+    },
+    Cline: {
+      files: [".clinerules"],
+      content: [
+        "<!-- STW 工作流规范（由 stw init 自动生成） -->",
+        "",
+        "读取 `.stw/STW-Workspace.md`，严格按照五阶段规范执行所有任务。",
+        "在终端中运行 `stw status` 查看进度，`stw next` 推进阶段。",
+        "",
+      ],
+    },
+    OpenCode: {
+      files: ["OPenCODE.md"],
+      content: [
+        "<!-- STW 工作流规范（由 stw init 自动生成） -->",
+        "",
+        "读取 `.stw/STW-Workspace.md`，严格按照五阶段规范执行所有任务。",
+        "在终端中运行 `stw status` 查看进度，`stw next` 推进阶段。",
+        "",
+      ],
+    },
+  };
+
+  const stwRefMarker = "STW 工作流规范";
+
+  function upsertFile(filePath, lines) {
+    const text = lines.join("\n");
+    const parent = dirname(filePath);
+    if (parent !== ".") mkdirSync(parent, { recursive: true });
+    if (!existsSync(filePath)) {
+      writeFileSync(filePath, text);
+    } else {
+      const existing = readFileSync(filePath, "utf-8");
+      if (!existing.includes(stwRefMarker)) {
+        writeFileSync(filePath, existing + "\n" + text);
+      }
+    }
+  }
+
+  for (const tool of environment.aiTools) {
+    const cfg = TOOL_BOOTSTRAPS[tool.name];
+    if (!cfg) continue;
+
+    for (const file of cfg.files) {
+      upsertFile(join(rootDir, file), cfg.content);
     }
 
-    // 2. CLAUDE.md: 自动注入 STW 工作流规范
-    const claudeMdPath = join(rootDir, "CLAUDE.md");
-    const stwBootstrap = [
-      "",
-      "<!-- STW 工作流规范（由 stw init 自动生成） -->",
-      "",
-      "## 当前任务",
-      "",
-      "读取 `.stw/STW-Workspace.md`，严格按照求是工作流的五阶段规范执行本项目的所有任务。",
-      "这包括：调查研究 → 抓住主要矛盾 → 集中优势兵力 → 实践检验 → 总结与转化。",
-      "使用 `/stw status` 查看当前进度，`/stw next` 推进阶段。",
-      "",
-    ].join("\n");
-
-    if (!existsSync(claudeMdPath)) {
-      writeFileSync(claudeMdPath, stwBootstrap.trimStart());
-    } else {
-      const existing = readFileSync(claudeMdPath, "utf-8");
-      if (!existing.includes("STW 工作流规范")) {
-        writeFileSync(claudeMdPath, existing + "\n" + stwBootstrap);
+    // Claude Code 专属: Skill (对话中 /stw)
+    if (cfg.skill) {
+      const skillsDir = join(rootDir, ".claude", "skills");
+      mkdirSync(skillsDir, { recursive: true });
+      const skillTemplate = join(TEMPLATES_DIR, "stw-skill.md");
+      if (existsSync(skillTemplate)) {
+        copyFileSync(skillTemplate, join(skillsDir, "stw.md"));
       }
     }
   }
