@@ -48,6 +48,7 @@ export function writePassingAnalysis(dir) {
     "### 2.5 由此及彼 — 追溯关联\nCall chain traced from entry point to affected modules fully documented.\n\n" +
     "### 2.6 由表及里 — 直达根因\nSurface symptoms traced down to the fundamental root cause of the issue.\n\n" +
     "## 3. 主要矛盾分析\nThe core contradiction identified and documented for this task.\n\n" +
-    "## 4. 初步方案\nProposed solution approach with clear implementation path outlined here.\n"
+    "## 4. 初步方案\nProposed solution approach with clear implementation path outlined here.\n\n" +
+    "## 4.5 变更计划声明\n| src/app.js | fix | Fix the reported bug in the application entry. |\n"
   );
 }

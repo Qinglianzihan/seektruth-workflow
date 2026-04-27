@@ -51,6 +51,23 @@ export function listReports(rootDir) {
   }));
 }
 
+/** Extract first 2 meaningful lines of a markdown section. */
+function extractSection(content, sectionMarker) {
+  const idx = content.indexOf(sectionMarker);
+  if (idx === -1) return "";
+  const nextSection = content.indexOf("\n## ", idx + 2);
+  const endIdx = nextSection !== -1 ? nextSection : content.length;
+  const body = content.slice(idx + sectionMarker.length, endIdx);
+  return body
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0 && !l.startsWith("|") && !l.startsWith("---"))
+    .slice(0, 2)
+    .join("; ")
+    .trim();
+}
+
 /**
  * Get summaries from the most recent N reports.
  */
@@ -60,10 +77,8 @@ export function getRecentSummaries(rootDir, count = 3) {
 
   return recent.map((r) => {
     const content = readFileSync(r.path, "utf-8");
-    // Extract title and first meaningful section
     const lines = content.split("\n");
     const title = lines.find((l) => l.startsWith("# "))?.replace("# ", "") || r.name;
-    // Find the "战役概述" section
     const overviewStart = content.indexOf("## 1. 战役概述");
     let snippet;
     if (overviewStart !== -1) {
@@ -73,6 +88,8 @@ export function getRecentSummaries(rootDir, count = 3) {
     } else {
       snippet = "";
     }
-    return { name: r.name, title, snippet };
+    const lessons = extractSection(content, "## 4. 经验教训");
+    const cognitiveInsights = extractSection(content, "## 2. 认知迭代");
+    return { name: r.name, title, snippet, lessons, cognitiveInsights };
   });
 }

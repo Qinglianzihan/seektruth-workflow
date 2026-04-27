@@ -46,4 +46,9 @@ describe("createDefaultConfig()", () => {
     assert.equal(cfg.confidenceGate.enabled, true);
     assert.equal(cfg.confidenceGate.threshold, 6);
   });
+
+  it("session config has default maxIterations of 0", () => {
+    const cfg = createDefaultConfig();
+    assert.equal(cfg.session.maxIterations, 0);
+  });
 });

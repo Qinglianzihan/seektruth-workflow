@@ -1,108 +1,140 @@
-# 求是工作流 (SeekTruth Workflow)
+<p align="center">
+  <img src="https://upload.wikimedia.org/wikipedia/en/2/2c/Mao_Selected_Works.jpg" width="180" alt="毛泽东选集">
+</p>
 
-> 将《毛泽东选集》哲学方法论转化为 AI 编程的结构化工作纪律。
+<h1 align="center">求是工作流</h1>
+<h3 align="center">SeekTruth Workflow</h3>
 
-**开源 · 轻量 · 跨平台** — 解决 AI 编程中常见的上下文腐化、目标漂移、记忆缺失等问题。
+<p align="center">
+  <a href="https://www.npmjs.com/package/seektruth-workflow"><img src="https://img.shields.io/npm/v/seektruth-workflow?color=c00" alt="npm"></a>
+  <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/seektruth-workflow" alt="node"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/npm/l/seektruth-workflow" alt="license"></a>
+  <img src="https://img.shields.io/badge/tests-156%20pass-brightgreen" alt="tests">
+</p>
 
-## 核心原则
+<p align="center"><em>
+  将《毛泽东选集》哲学方法论转化为 AI 编程的结构化工作纪律。
+</em></p>
 
-1. **调查研究先行** — 没有调查就没有发言权。AI 在编写任何代码前，必须先深入调研。
-2. **矛盾分析驱动** — 任何任务都只有一个主要矛盾，必须抓住它并集中力量解决。
-3. **集中优势兵力** — 只在作战区域 (`ATTACK_ZONE`) 内修改，严禁越界。
-4. **实践-认识-再实践** — 真理的标准是实践。失败则回退阶段 1，波浪式前进。
-5. **惩前毖后** — 错误入病例库，下次任务自动加载。
+---
+
+## 为什么需要这个工具？
+
+AI 编程助手在长任务中普遍面临 **上下文腐化、目标漂移、记忆缺失、越界修改、盲目信任** 等 20 类问题。求是工作流将毛选中的军事指挥、调查研究和辩证思维方法论，落地为 AI 编程的纪律约束体系：
+
+| AI 痛点 | 毛选方法论 | 落地机制 |
+|:---|:---|:---|
+| AI 不读代码就写代码 | 「没有调查就没有发言权」 | 阶段 1 六步认知分析 |
+| AI 不尊重项目风格 | 「从群众中来，到群众中去」 | 项目风格侦察 |
+| AI 凭想象断言 | 「反对主观主义」 | 每条结论标注 (file:line) |
+| AI 随意加新依赖 | 「反对党八股」 | 变更计划声明 + 依赖检测 |
+| AI 修改不该改的文件 | 「集中优势兵力」 | ATTACK_ZONE 越界封锁 |
+| AI 判断不可靠 | 「不打无把握之仗」 | 置信度门禁 + 审查员 |
+| 用户盲目相信 AI | 「实践是检验真理的唯一标准」 | 人工核查清单 |
+| 下次会话忘了上次的坑 | 「惩前毖后，治病救人」 | 错误病例库 + 经验教训跨会话 |
+| 长对话质量越来越差 | 「波浪式前进，螺旋式上升」 | 回滚迭代 + 长会话告警 |
 
 ## 安装
 
 ```bash
 npm install -g seektruth-workflow
-# 或
-npx seektruth-workflow init
 ```
-
-在目标项目中初始化 `.stw/` 目录，包含工作流规范、模板和配置文件。
 
 ## 五阶段工作流
 
-| 阶段 | 名称 | 交付物 | 门禁 |
-| :--- | :--- | :--- | :--- |
-| 1 | **调查研究** | 六步认知分析报告（去粗取精去伪存真由此及彼由表及里） | — |
-| 1→2 | **战前评估** | — | 置信度门禁（阈值 6/10），不打无把握之仗 |
-| 2 | **抓住主要矛盾** | `ATTACK_ZONE` 声明 — 作战区域聚焦 | — |
-| 3 | **集中优势兵力** | `lockdown.json` — 专注封锁清单 | 自动生成 |
-| 3→4 | **越界检查** | — | `git diff` 对比 ATTACK_ZONE，阻断越界修改 |
-| 4 | **实践检验** | 测试通过 | 强制验证 |
-| 5 | **总结与转化** | 战役总结报告（含错误病例） | — |
+```
+阶段 1  调查研究  ──→  阶段 2  抓住主要矛盾  ──→  阶段 3  集中优势兵力
+   │                       │                          │
+   │ 敌情分析报告           │ ATTACK_ZONE 声明          │ lockdown.json
+   │ 风格侦察 + 六步认知    │ 约束修改位置              │ 变更计划对照
+   │                       │                          │
+   ▼                       ▼                          ▼
+阶段 1→2 战前评估      阶段 2→3 交付物检查        阶段 3→4 纪律检查
+ 9项置信度检查           专注封锁清单生成           文件越界 + 变更计划
+ 阈值 6/10                                            + 依赖检测
+                                                       │
+                                                       ▼
+阶段 5  总结与转化  ←──  阶段 4  实践检验
+   │                       │
+   │ 经验教训 + 认知迭代    │ 测试通过 + 审查报告
+   │ 错误病例入库           │ 人工核查 5 项清单
+   ▼                       ▼
+跨会话记忆传递
+```
 
 ## 命令参考
 
 | 命令 | 说明 |
-| :--- | :--- |
-| `stw init` | 初始化工作流（侦察环境 → 生成配置） |
-| `stw init --deep` | 初始化 + 深度扫描 MCP 工具详情 |
-| `stw start` | 开始新任务（加载历史经验和错误病例） |
-| `stw status` | 查看当前阶段、进度和迭代历史 |
-| `stw next` | 推进到下一阶段（检查交付物、置信度门禁、越界封锁） |
-| `stw rollback <原因>` | 回退到阶段 1，保留迭代记录 |
-| `stw abort` | 中止当前任务 |
-| `stw repair` | 修复/重新生成 .stw 文件 |
-| `stw report` | 存档当前总结报告 |
-| `stw stats` | 查看统计报告（会话数、Token、错误病例） |
-| `stw stats --log-tokens <数量> [备注]` | 记录 Token 消耗 |
+|:---|:---|
+| `stw init` | 侦察环境 → 规则选择 → 冲突解决 → 生成 `.stw/` |
+| `stw init --deep` | 同上 + 深度扫描 MCP 工具 |
+| `stw start --desc "..."` | 开始新任务，保存任务描述 |
+| `stw start --force` | 跳过 git 脏工作树检查 |
+| `stw status` | 当前阶段、进度、运行时长、回滚迭代 |
+| `stw next` | 推进阶段（交付物 + 门禁 + 纪律检查） |
+| `stw next --scope-check` | 推进前对照原始需求检查 |
+| `stw rollback <原因>` | 回退阶段 1，保留分析（波浪式前进） |
+| `stw abort` | 中止任务 |
+| `stw report` | 存档总结（经验教训跨会话复用） |
+| `stw stats` | 统计：会话数 / Token / 错误病例 |
+| `stw stats --log-tokens <N>` | 记录 Token 消耗 |
+| `stw repair` | 修复/重生成 `.stw` 文件 |
 
-## 毛选哲学概念映射
-
-| 概念 | 出处 | 实现 |
-|------|------|------|
-| 调查研究 | 《反对本本主义》 | 阶段 1 六步认知分析 |
-| 矛盾论 | 《矛盾论》 | 阶段 2 任务聚焦 + ATTACK_ZONE |
-| 集中优势兵力 | 《中国革命战争的战略问题》 | 阶段 3 lockdown.json |
-| 实践论 | 《实践论》 | 阶段 4 测试验证 |
-| 实事求是 | 六届六中全会 | 环境自动侦察 |
-| 去粗取精去伪存真由此及彼由表及里 | 《实践论》 | 认知六步法 |
-| 不打无把握之仗 | 十大军事原则 | 置信度门禁 |
-| 波浪式前进 | 《中国革命战争的战略问题》 | `stw rollback` + 迭代追踪 |
-| 惩前毖后 | 《整顿党的作风》 | 错误病例库 |
-| 民主集中制 | 《关于正确处理人民内部矛盾的问题》 | 审查员子代理机制 |
-
-## 工作流示例
+## 快速上手
 
 ```bash
 cd your-project
-stw init                    # 环境侦察 → 生成 .stw/
-stw start                   # 开始任务 → 阶段 1
+stw init                            # 初始化（一次性）
+stw start --desc "修复订单超时bug"   # 开始任务
 
-# AI 填写 Analysis-Template.md（六步法分析）
+# AI 填写 .stw/Analysis-Template.md
+# → 风格侦察 + 六步认知分析 + 变更计划声明
+# ⚠️ 每条结论标注出处：(order-service.js:130)
 
-stw next                    # 阶段 1→2（置信度门禁自动检查）
-
-# 在 STW-Workspace.md 中声明作战区域：
-# <!-- ATTACK_ZONE: src/orders/* -->
-
-stw next                    # 阶段 2→3（自动生成 lockdown.json）
-# → 专注封锁已生成: ['src/orders/*']
-
-# 修改代码 + 测试通过
-
-stw next                    # 阶段 3→4（越界封锁自动检查 git diff）
-# 创建 .stw/test-results.json {"passed":true}
-
-stw next                    # 阶段 4→5（填写总结报告）
-stw report                  # 归档总结
-stw next                    # 全部完成
+stw next    # → 阶段 2（战前评估 9 项检查）
+stw next    # → 阶段 3（ATTACK_ZONE → lockdown.json 自动生成）
+# 写代码 + 运行测试
+stw next    # → 阶段 4（越界+变更计划+依赖 三重检查）
+stw next    # → 阶段 5（人工核查 5 项清单）
+stw report  # 归档总结，经验教训自动提取
+stw next    # 全部完成
 ```
 
-中途偏离可回退：
+中途偏离回退：
 
 ```bash
-stw rollback 测试不通过，edge case 遗漏
-# → 回退到阶段 1，保留迭代记录和错误病例
+stw rollback 需求变更，重新分析
 ```
 
-## 开发状态
+## 核心概念映射
 
-**v0.1.0** — 97 个单元测试，34 suites，0 failures。16 源文件，14 测试文件。
+| 概念 | 出处 | 实现 |
+|:---|:---|:---|
+| 调查研究 | 《反对本本主义》 | 阶段 1 认知分析 |
+| 从群众中来 | 《关于领导方法的若干问题》 | 项目风格侦察 |
+| 反对主观主义 | 《反对本本主义》 | (file:line) 源码引用 |
+| 反对党八股 | 《反对党八股》 | 变更计划 WHAT+WHY |
+| 集中优势兵力 | 《中国革命战争的战略问题》 | ATTACK_ZONE + lockdown |
+| 实践是真理标准 | 《实践论》 | 测试 + 人工核查 |
+| 实事求是 | 《改造我们的学习》 | 环境自动侦察 |
+| 不打无把握之仗 | 《目前形势和我们的任务》 | 置信度门禁 |
+| 惩前毖后 | 《整顿党的作风》 | 错误病例 + 经验教训 |
+| 波浪式前进 | 《中国革命战争的战略问题》 | 回滚 + 迭代 |
 
-## 许可证
+## 推荐阅读
 
-MIT
+<p align="center">
+  <a href="https://book.douban.com/subject/1055569/">
+    《毛泽东选集》（全五卷）
+  </a>
+</p>
+
+<p align="center"><em>
+  "读书是学习，使用也是学习，而且是更重要的学习。"
+</em></p>
+
+---
+
+<p align="center">
+  MIT License · v0.2.0 · 156 tests · 49 suites
+</p>

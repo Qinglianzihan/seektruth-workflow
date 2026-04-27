@@ -31,6 +31,11 @@ export function createDefaultConfig() {
       warnings: [],        // [{ message }]
     },
 
+    // 会话管理
+    session: {
+      maxIterations: 0,  // 0 = unlimited
+    },
+
     // 置信度门禁
     confidenceGate: {
       enabled: true,

@@ -42,6 +42,7 @@ export function assessConfidence(rootDir) {
     { label: "由此及彼 — 追溯关联", marker: "## 2.5 由此及彼" },
     { label: "由表及里 — 直达根因", marker: "## 2.6 由表及里" },
     { label: "初步方案", marker: "## 4. 初步方案" },
+    { label: "变更计划声明", marker: "## 4.5 变更计划声明" },
   ];
 
   for (const step of steps) {

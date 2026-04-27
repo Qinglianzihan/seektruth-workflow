@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { parseAttackZones, checkFileBounds } from "./lockdown.js";
+import { parseAttackZones, checkFileBounds, checkChangePlan, checkDepsChange } from "./lockdown.js";
 import { assessConfidence } from "./confidence-gate.js";
 
 export const PHASES = [
@@ -40,15 +40,17 @@ export function getCurrentPhase(rootDir) {
     startedAt: progress.startedAt,
     completedPhases: progress.completedPhases || [],
     iterations: progress.iterations || [],
+    taskDescription: progress.taskDescription || "",
   };
 }
 
-export function startSession(rootDir) {
+export function startSession(rootDir, taskDescription = "") {
   const data = {
     phase: 1,
     startedAt: new Date().toISOString(),
     completedPhases: [],
     iterations: [],
+    taskDescription,
   };
   writeProgress(rootDir, data);
   return getCurrentPhase(rootDir);
@@ -59,7 +61,6 @@ function deliverableExists(rootDir, deliverable) {
     return parseAttackZones(rootDir).length > 0;
   }
   if (deliverable === "测试通过") {
-    // Check for test-results.json (AI-generated test evidence)
     const resultsPath = join(rootDir, ".stw", "test-results.json");
     if (existsSync(resultsPath)) {
       try {
@@ -69,11 +70,9 @@ function deliverableExists(rootDir, deliverable) {
         return false;
       }
     }
-    // Check for legacy marker file
     const markerPath = join(rootDir, ".stw", "test-passed");
     return existsSync(markerPath);
   }
-  // File-based deliverable
   const filePath = join(rootDir, deliverable);
   return existsSync(filePath);
 }
@@ -126,7 +125,7 @@ export function advancePhase(rootDir) {
     }
   }
 
-  // File bounds check: phase 3→4
+  // File bounds + change plan + deps: phase 3→4
   if (progress.phase === 3) {
     const bounds = checkFileBounds(rootDir);
     if (!bounds.ok) {
@@ -140,11 +139,28 @@ export function advancePhase(rootDir) {
         required: `仅允许修改以下区域: ${bounds.zones.join(", ")}。将越界文件回滚后重试。`,
       };
     }
+
+    const changePlan = checkChangePlan(rootDir);
+    if (!changePlan.ok) {
+      if (changePlan.error) {
+        return { ok: false, error: changePlan.error };
+      }
+      const unplannedList = changePlan.unplanned.map((f) => `  · ${f}`).join("\n");
+      return {
+        ok: false,
+        error: `${changePlan.unplanned.length} 个文件未在变更计划中声明：\n${unplannedList}`,
+        required: "请在 Analysis-Template.md 的变更计划声明中补充改动类型和理由。",
+      };
+    }
+
+    const deps = checkDepsChange(rootDir);
+    if (deps.warning) {
+      console.log(`\n  ⚠️  ${deps.warning}`);
+    }
   }
 
   // Check if this is the last phase
   if (progress.phase >= PHASES.length) {
-    // Mark session as complete
     progress.completedPhases.push(progress.phase);
     writeProgress(rootDir, { ...progress, phase: "complete" });
     return { ok: true, done: true, phase: "complete" };
@@ -168,7 +184,6 @@ export function rollbackSession(rootDir, reason) {
     return { ok: false, error: "已在阶段 1，无法继续回退。运行 stw abort 中止任务。" };
   }
 
-  // Record the iteration (the phase we are rolling back FROM)
   if (!progress.iterations) progress.iterations = [];
   progress.iterations.push({
     phase: progress.phase,
@@ -176,7 +191,6 @@ export function rollbackSession(rootDir, reason) {
     timestamp: new Date().toISOString(),
   });
 
-  // Reset to phase 1, keep completedPhases as historical record
   progress.phase = 1;
   writeProgress(rootDir, progress);
 
@@ -188,12 +202,34 @@ export function rollbackSession(rootDir, reason) {
   };
 }
 
+export function getSessionConfig(rootDir) {
+  const configPath = join(rootDir, ".stw", "config.json");
+  if (!existsSync(configPath)) return { maxIterations: 0 };
+  try {
+    const config = JSON.parse(readFileSync(configPath, "utf-8"));
+    return {
+      maxIterations: config.session?.maxIterations ?? 0,
+    };
+  } catch {
+    return { maxIterations: 0 };
+  }
+}
+
+export function readTestResults(rootDir) {
+  const resultsPath = join(rootDir, ".stw", "test-results.json");
+  if (!existsSync(resultsPath)) return null;
+  try {
+    return JSON.parse(readFileSync(resultsPath, "utf-8"));
+  } catch {
+    return null;
+  }
+}
+
 export function abortSession(rootDir) {
   const progress = readProgress(rootDir);
   if (!progress) {
     return { ok: false, error: "没有活跃的任务可中止。" };
   }
-  // Remove progress file to reset session
   const path = progressPath(rootDir);
   try {
     rmSync(path);

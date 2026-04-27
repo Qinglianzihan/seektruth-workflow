@@ -68,6 +68,25 @@ describe("assessConfidence", () => {
   });
 });
 
+  it("flags missing change plan section", () => {
+    const dir = freshDir();
+    // Has all sections except 变更计划声明
+    writeStwFile(dir, "Analysis-Template.md",
+      "## 0. 战前评估\n8/10\n\n" +
+      "## 1. 任务背景\nEnough context here for the task.\n\n" +
+      "## 1.5 项目风格侦察（从群众中来）\nScanned project patterns thoroughly enough for passing.\n\n" +
+      "## 2.1 去粗 — 过滤噪音\nFiltered content about files here.\n\n" +
+      "## 2.2 取精 — 提取精华\nKey architectural decisions found.\n\n" +
+      "## 2.3 去伪 — 消除假象\nMisleading configs identified.\n\n" +
+      "## 2.4 存真 — 保留真相\nActual behavior described (state-machine.js:130) with second ref (lockdown.js:45).\n\n" +
+      "## 2.5 由此及彼 — 追溯关联\nCall chain fully documented.\n\n" +
+      "## 2.6 由表及里 — 直达根因\nRoot cause identified clearly.\n\n" +
+      "## 4. 初步方案\nImplementation approach outlined here (lockdown.js:45).\n"
+    );
+    const { gaps } = assessConfidence(dir);
+    assert.ok(gaps.some((g) => g.includes("变更计划声明")), "should flag missing change plan: " + JSON.stringify(gaps));
+  });
+
 describe("readSelfRating", () => {
   it("returns null when section 0 missing", () => {
     const dir = freshDir();

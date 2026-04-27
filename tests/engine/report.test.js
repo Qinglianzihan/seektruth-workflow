@@ -61,4 +61,42 @@ describe("Report — getRecentSummaries", () => {
     assert.equal(summaries.length, 1);
     assert.equal(summaries[0].title, "我的总结");
   });
+
+  it("extracts lessons from archived report", () => {
+    const dir = freshDir();
+    writeSummary(dir,
+      "# 我的总结\n\n" +
+      "## 1. 战役概述\n\n| **任务** | X |\n内容\n\n" +
+      "## 4. 经验教训\n\n" +
+      "先写测试再改代码很有效。\n" +
+      "频繁提交保持清晰历史。"
+    );
+    archiveReport(dir);
+    const summaries = getRecentSummaries(dir, 1);
+    assert.ok(summaries[0].lessons.length > 0);
+    assert.ok(summaries[0].lessons.includes("先写测试"));
+  });
+
+  it("extracts cognitive insights from archived report", () => {
+    const dir = freshDir();
+    writeSummary(dir,
+      "# 我的总结\n\n" +
+      "## 1. 战役概述\n\n| **任务** | X |\n内容\n\n" +
+      "## 2. 认知迭代\n\n" +
+      "发现了模块间隐藏的依赖关系。"
+    );
+    archiveReport(dir);
+    const summaries = getRecentSummaries(dir, 1);
+    assert.ok(summaries[0].cognitiveInsights.length > 0);
+    assert.ok(summaries[0].cognitiveInsights.includes("隐藏的依赖"));
+  });
+
+  it("returns empty strings for missing sections", () => {
+    const dir = freshDir();
+    writeSummary(dir, "# 我的总结\n\n## 1. 战役概述\n\n| **任务** | X |\n内容");
+    archiveReport(dir);
+    const summaries = getRecentSummaries(dir, 1);
+    assert.equal(summaries[0].lessons, "");
+    assert.equal(summaries[0].cognitiveInsights, "");
+  });
 });
