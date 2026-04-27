@@ -65,7 +65,9 @@ function deliverableExists(rootDir, deliverable) {
     if (existsSync(resultsPath)) {
       try {
         const data = JSON.parse(readFileSync(resultsPath, "utf-8"));
-        return data.passed === true;
+        if (data.passed === true) return true;
+        if (typeof data.passed === "number" && data.passed > 0) return true;
+        return false;
       } catch {
         return false;
       }
