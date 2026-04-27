@@ -1,5 +1,16 @@
+# 依赖
 node_modules/
+
+# 开发临时文件
 .stw/.progress.json
 .stw/stats.json
 .stw/lockdown.json
+.stw/test-results.json
+.stw/test-passed
 
+# 测试产生的报告（保留 .gitkeep，排除测试数据）
+.stw/reports/summary-*.md
+
+# 系统
+.DS_Store
+Thumbs.db
