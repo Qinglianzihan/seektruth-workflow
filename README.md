@@ -170,4 +170,4 @@ stw repair                 # 修复/重生成 .stw 文件
 
 ---
 
-<p align="center">MIT · v0.2.0 · <a href="https://github.com/Qinglianzihan/seektruth-workflow">GitHub</a></p>
+<p align="center">MIT · v0.3.0 · 164 tests · <a href="https://github.com/Qinglianzihan/seektruth-workflow">GitHub</a></p>

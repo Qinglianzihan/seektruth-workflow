@@ -12,6 +12,7 @@ import { generateReport } from "../src/scout/report-generator.js";
 import { resolveConflicts } from "../src/adapters/conflict-resolver.js";
 import { selectRules } from "../src/adapters/rule-selector.js";
 import { writeStwFiles } from "../src/adapters/file-writer.js";
+import { selectAiTools } from "../src/adapters/tool-selector.js";
 import { getCurrentPhase, PHASES, startSession, advancePhase, abortSession, rollbackSession, getSessionConfig, readTestResults } from "../src/engine/state-machine.js";
 import { generateLockdown, checkDirtyTree } from "../src/engine/lockdown.js";
 import { archiveReport, listReports, getRecentSummaries } from "../src/engine/report.js";
@@ -103,10 +104,16 @@ const cmdInit = async (deep) => {
     }
   }
 
+  // 工具选择：让用户选择要集成的 AI 工具
+  environment.aiTools = await selectAiTools(environment.aiTools);
+
   // 生成 .stw/ 文件
   const stwDir = writeStwFiles(rootDir, environment, conflicts);
   console.log(`\n✅ 求是工作流已初始化: ${stwDir}`);
-  console.log("   下一步：将 .stw/STW-Workspace.md 内容作为 AI 系统提示。");
+  const bootstrapped = environment.aiTools.map((t) => t.name);
+  if (bootstrapped.length > 0) {
+    console.log(`   已集成: ${bootstrapped.join(", ")}`);
+  }
   console.log(injectQuote(rootDir));
 };
 
