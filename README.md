@@ -39,6 +39,61 @@ stw next                            # 按流程推进，AI 完成每阶段交付
 
 每一步 `stw next` 自动检查交付物、置信度、越界修改、变更计划，不通过不推进。
 
+## 在 AI 编程工具中使用
+
+STW 不绑定任何特定 AI 工具。工作流的核心是 **CLI 把关 + AI 执行**：
+
+```
+                  ┌──────────────────────────┐
+                  │      stw (你来执行)        │
+                  │  init / start / next /    │
+                  │  rollback / report        │
+                  └──────────┬───────────────┘
+                             │ 检查交付物 / 门禁
+                             ▼
+                  ┌──────────────────────────┐
+                  │    AI 助手 (Claude/Codex) │
+                  │  读取 .stw/STW-Workspace  │
+                  │  填写模板 → 写代码 → 测试  │
+                  └──────────────────────────┘
+```
+
+### Claude Code
+
+在项目根目录初始化后，直接在对话中告诉 Claude：
+
+> 请读取 `.stw/STW-Workspace.md`，严格按照求是工作流规范完成任务。
+
+或者将 `STW-Workspace.md` 内容写入 `CLAUDE.md`，Claude 每次会话自动加载。
+
+### Codex (OpenAI)
+
+将 `.stw/STW-Workspace.md` 内容粘贴到 Codex 的系统提示或项目指令中。
+
+### 典型会话节奏
+
+```bash
+stw start --desc "添加用户认证模块"
+
+# → Claude: "按 STW-Workspace.md 规范，完成阶段 1 调查研究"
+# → AI 阅读代码，填写 .stw/Analysis-Template.md
+
+stw next    # 置信度门禁检查 → 通过 → 进入阶段 2
+stw next    # ATTACK_ZONE 检查 → 通过 → 进入阶段 3
+
+# → Claude: "在 ATTACK_ZONE 范围内实现认证功能"
+# → AI 修改代码，运行测试
+
+stw next    # 越界+变更计划+依赖检查 → 通过 → 进入阶段 4
+# 创建 .stw/test-results.json {"passed":true,"total":12,"failed":0}
+
+stw next    # 人工核查清单 → 进入阶段 5
+# → Claude: "填写总结报告"
+stw report  # 归档，经验教训入库
+```
+
+关键点：**AI 负责执行，你负责 `stw next` 把关**。门禁不通过，AI 继续改。
+
 ---
 
 ## 解决了什么问题
