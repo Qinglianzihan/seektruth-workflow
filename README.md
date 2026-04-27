@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://upload.wikimedia.org/wikipedia/en/2/2c/Mao_Selected_Works.jpg" width="180" alt="毛泽东选集">
+  <img src="./assets/mao-cover.jpg" width="180" alt="毛泽东选集">
 </p>
 
 <h1 align="center">求是工作流</h1>
@@ -124,9 +124,7 @@ stw rollback 需求变更，重新分析
 ## 推荐阅读
 
 <p align="center">
-  <a href="https://book.douban.com/subject/1055569/">
-    《毛泽东选集》（全五卷）
-  </a>
+  📖 <a href="./assets/毛泽东选集.pdf"><strong>《毛泽东选集》（全五卷）— PDF 下载</strong></a>
 </p>
 
 <p align="center"><em>
