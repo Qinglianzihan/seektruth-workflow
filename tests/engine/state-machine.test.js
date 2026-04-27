@@ -114,6 +114,7 @@ describe("State Machine — delivery checks", () => {
     writeFile(dir, "Analysis-Template.md", "# A");
     writeFile(dir, "STW-Workspace.md", "# W\n<!-- ATTACK_ZONE: src/* -->");
     writeFile(dir, "lockdown.json", "{}");
+    writeFile(dir, "test-results.json", '{"passed":true}');
     writeFile(dir, "Summary-Template.md", "# S");
     startSession(dir);
     advancePhase(dir); // → 2
@@ -142,6 +143,7 @@ describe("State Machine — full lifecycle", () => {
     writeFile(dir, "lockdown.json", "{}");
     assert.equal(advancePhase(dir).phase.id, 4);
     // Phase 4 → 5
+    writeFile(dir, "test-results.json", '{"passed":true}');
     assert.equal(advancePhase(dir).phase.id, 5);
     // Phase 5 → complete
     writeFile(dir, "Summary-Template.md", "# S");

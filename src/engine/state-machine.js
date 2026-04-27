@@ -67,8 +67,19 @@ function deliverableExists(rootDir, deliverable) {
     return false;
   }
   if (deliverable === "测试通过") {
-    // Placeholder: test pass verification is manual/AI-driven
-    return true;
+    // Check for test-results.json (AI-generated test evidence)
+    const resultsPath = join(rootDir, ".stw", "test-results.json");
+    if (existsSync(resultsPath)) {
+      try {
+        const data = JSON.parse(readFileSync(resultsPath, "utf-8"));
+        return data.passed === true;
+      } catch {
+        return false;
+      }
+    }
+    // Check for legacy marker file
+    const markerPath = join(rootDir, ".stw", "test-passed");
+    return existsSync(markerPath);
   }
   // File-based deliverable
   const filePath = join(rootDir, deliverable);

@@ -8,6 +8,7 @@ import { scanMcpConfigs, getBuiltinMcpServers } from "../src/scout/mcp-scanner.j
 import { scanSkills } from "../src/scout/skill-scanner.js";
 import { generateReport } from "../src/scout/report-generator.js";
 import { resolveConflicts } from "../src/adapters/conflict-resolver.js";
+import { selectRules } from "../src/adapters/rule-selector.js";
 import { writeStwFiles } from "../src/adapters/file-writer.js";
 import { getCurrentPhase, PHASES, startSession, advancePhase } from "../src/engine/state-machine.js";
 import { generateLockdown } from "../src/engine/lockdown.js";
@@ -68,6 +69,15 @@ const cmdInit = async (deep) => {
       } else if (s.status === "error") {
         console.log(`  ${s.name} (${s.source}): ❌ ${s.error}\n`);
       }
+    }
+  }
+
+  // 规则选择（按项目类型）
+  const { enabled, disabled } = selectRules(environment);
+  if (disabled.length > 0) {
+    console.log(`\n📋 已禁用规则（适配 ${environment.project?.type || "Unknown"}）:`);
+    for (const d of disabled) {
+      console.log(`  · ${d.label} — ${d.reason}`);
     }
   }
 
@@ -155,7 +165,7 @@ const cmdStart = () => {
 const phaseGuidance = {
   1: "完成调查研究后，在 STW-Workspace.md 中使用 `<!-- ATTACK_ZONE: path/* -->` 声明作战区域作为任务聚焦声明。",
   2: "已在 STW-Workspace.md 中声明 ATTACK_ZONE，专注封锁清单自动生成。AI 不得修改封锁区域外的任何文件。",
-  3: "运行测试套件验证修改的正确性，确保全部通过。",
+  3: "运行测试套件验证修改的正确性，确保全部通过。然后创建 .stw/test-results.json {\"passed\":true} 作为交付证据。",
   4: "填写 .stw/Summary-Template.md 中的总结报告，记录认知迭代。",
 };
 
