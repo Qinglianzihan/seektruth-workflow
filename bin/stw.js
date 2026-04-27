@@ -118,8 +118,8 @@ const cmdInit = async (deep) => {
 };
 
 const cmdStatus = () => {
+  const rootDir = process.cwd();
   try {
-    const rootDir = process.cwd();
     const current = getCurrentPhase(rootDir);
 
     if (!current) {
@@ -176,8 +176,8 @@ const cmdStatus = () => {
 };
 
 const cmdStart = () => {
+  const rootDir = process.cwd();
   try {
-    const rootDir = process.cwd();
     const stwDir = join(rootDir, ".stw");
 
     if (!existsSync(stwDir)) {
@@ -274,8 +274,8 @@ const phaseGuidance = {
 };
 
 const cmdNext = () => {
+  const rootDir = process.cwd();
   try {
-    const rootDir = process.cwd();
     const current = getCurrentPhase(rootDir);
 
     if (!current) {
@@ -400,8 +400,8 @@ const cmdStats = async () => {
 };
 
 const cmdReport = () => {
+  const rootDir = process.cwd();
   try {
-    const rootDir = process.cwd();
     const result = archiveReport(rootDir);
     if (!result.ok) {
       console.log(`\n❌ ${result.error}`);
@@ -418,8 +418,8 @@ const cmdReport = () => {
 };
 
 const cmdRollback = () => {
+  const rootDir = process.cwd();
   try {
-    const rootDir = process.cwd();
     const reason = process.argv.slice(3).join(" ") || "未说明原因";
     const result = rollbackSession(rootDir, reason);
     if (!result.ok) {
@@ -445,8 +445,8 @@ const cmdRollback = () => {
 };
 
 const cmdAbort = () => {
+  const rootDir = process.cwd();
   try {
-    const rootDir = process.cwd();
     const result = abortSession(rootDir);
     if (!result.ok) {
       console.log(`\n❌ ${result.error}`);
@@ -462,8 +462,8 @@ const cmdAbort = () => {
 };
 
 const cmdRepair = () => {
+  const rootDir = process.cwd();
   try {
-    const rootDir = process.cwd();
     const stwDir = join(rootDir, ".stw");
     if (!existsSync(stwDir)) {
       console.log("\n❌ .stw 目录不存在。请先运行 stw init。");

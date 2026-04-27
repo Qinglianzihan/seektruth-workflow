@@ -1,6 +1,6 @@
 {
   "name": "seektruth-workflow",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "将《毛泽东选集》哲学方法论转化为 AI 编程的结构化工作纪律 — CLI 工具",
   "type": "module",
   "bin": {
