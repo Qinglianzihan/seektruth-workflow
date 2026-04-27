@@ -91,11 +91,13 @@ export function scanSkills(rootDir) {
     skills.push(...findSkillFiles(fullPath, dir));
   }
 
-  // Also scan from home directory root (for globally installed skills)
+  // Also scan from home directory root (for globally installed skills, skip if same as project dir)
+  const homeRoot = homedir();
   for (const dir of SKILL_DIRS) {
-    const fullPath = join(homedir(), dir);
-    if (fullPath !== join(rootDir, dir)) {
-      skills.push(...findSkillFiles(fullPath, `~/${dir}`));
+    const projectPath = join(rootDir, dir);
+    const homePath = join(homeRoot, dir);
+    if (homePath !== projectPath && existsSync(homePath)) {
+      skills.push(...findSkillFiles(homePath, `~/${dir}`));
     }
   }
 

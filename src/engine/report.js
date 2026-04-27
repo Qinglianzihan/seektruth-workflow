@@ -14,9 +14,9 @@ export function archiveReport(rootDir) {
 
   const content = readFileSync(summaryPath, "utf-8");
   // Check if user has filled in any actual content beyond the empty template
-  const templateComments = content.match(/<!--.*-->/g) || [];
-  const emptyTableRow = content.includes("| **任务** | |");
-  if (emptyTableRow && templateComments.length > 0) {
+  const hasUnfilledComment = /<!--\s*(本次任务|最终采用的方案|哪些做法)\s*-->/.test(content);
+  const hasEmptyTaskRow = content.includes("| **任务** | |");
+  if (hasEmptyTaskRow && hasUnfilledComment) {
     return { ok: false, error: "总结报告尚未填写。请先在 .stw/Summary-Template.md 中完成总结。" };
   }
 

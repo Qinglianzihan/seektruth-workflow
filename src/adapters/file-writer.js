@@ -77,6 +77,7 @@ export function writeStwFiles(rootDir, environment, conflicts) {
   const reportsDir = join(stwDir, "reports");
   mkdirSync(stwDir, { recursive: true });
   mkdirSync(reportsDir, { recursive: true });
+  writeFileSync(join(reportsDir, ".gitkeep"), "");
 
   const now = new Date().toISOString().slice(0, 10);
 
@@ -109,9 +110,11 @@ export function writeStwFiles(rootDir, environment, conflicts) {
     .replace(/\{\{DATE\}\}/g, now);
   writeFileSync(join(stwDir, "Summary-Template.md"), summary);
 
-  // 审查员 agent 定义文件
-  copyFileSync(join(TEMPLATES_DIR, "审查员.md"), join(stwDir, "审查员.md"));
-  copyFileSync(join(TEMPLATES_DIR, "审查员.claude.md"), join(stwDir, "审查员.claude.md"));
+  // 审查员 agent 定义文件（可选模板，不存在则跳过）
+  const reviewerMd = join(TEMPLATES_DIR, "审查员.md");
+  const reviewerClaudeMd = join(TEMPLATES_DIR, "审查员.claude.md");
+  if (existsSync(reviewerMd)) copyFileSync(reviewerMd, join(stwDir, "审查员.md"));
+  if (existsSync(reviewerClaudeMd)) copyFileSync(reviewerClaudeMd, join(stwDir, "审查员.claude.md"));
 
   return stwDir;
 }

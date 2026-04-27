@@ -1,9 +1,11 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, createReadStream } from "node:fs";
+import { createInterface } from "node:readline";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
 const HISTORY_PATH = join(homedir(), ".claude", "history.jsonl");
 const STATS_FILE = ".stw/stats.json";
+const MAX_HISTORY_LINES = 50_000; // safe limit
 
 function readStats(rootDir) {
   const path = join(rootDir, STATS_FILE);
@@ -24,27 +26,30 @@ function writeStats(rootDir, stats) {
 }
 
 /**
- * Count sessions from Claude Code history log.
+ * Count sessions from Claude Code history log (streaming, memory-safe).
  */
-export function countSessionsFromHistory() {
+export async function countSessionsFromHistory() {
   if (!existsSync(HISTORY_PATH)) {
     return { total: 0, byProject: {} };
   }
 
-  const content = readFileSync(HISTORY_PATH, "utf-8");
-  const lines = content.trim().split("\n").filter(Boolean);
   const sessions = new Map();
+  let lineCount = 0;
 
-  for (const line of lines) {
+  const rl = createInterface({
+    input: createReadStream(HISTORY_PATH, { encoding: "utf-8", highWaterMark: 64 * 1024 }),
+    crlfDelay: Infinity,
+  });
+
+  for await (const line of rl) {
+    if (++lineCount > MAX_HISTORY_LINES) break;
+    if (!line) continue;
     try {
       const entry = JSON.parse(line);
       if (entry.sessionId && entry.project) {
         const existing = sessions.get(entry.sessionId);
         if (!existing) {
-          sessions.set(entry.sessionId, {
-            project: entry.project,
-            messages: 1,
-          });
+          sessions.set(entry.sessionId, { project: entry.project, messages: 1 });
         } else {
           existing.messages++;
         }
@@ -64,7 +69,7 @@ export function countSessionsFromHistory() {
     total++;
   }
 
-  return { total, byProject };
+  return { total, byProject, truncated: lineCount > MAX_HISTORY_LINES };
 }
 
 /**
@@ -82,14 +87,14 @@ export function logTokens(rootDir, tokens, note) {
   return stats;
 }
 
-export function getStats(rootDir) {
+export async function getStats(rootDir) {
   const manual = readStats(rootDir);
-  const history = countSessionsFromHistory();
+  const history = await countSessionsFromHistory();
   return { manual, history };
 }
 
-export function generateStatsReport(rootDir) {
-  const stats = getStats(rootDir);
+export async function generateStatsReport(rootDir) {
+  const stats = await getStats(rootDir);
   const lines = [];
 
   lines.push(`\n📊 求是工作流 — 统计报告\n`);
@@ -97,7 +102,7 @@ export function generateStatsReport(rootDir) {
   // History stats
   const h = stats.history;
   lines.push(`  Claude Code 会话历史:`);
-  lines.push(`    总会话数: ${h.total}`);
+  lines.push(`    总会话数: ${h.total}${h.truncated ? " (截断至前50k行)" : ""}`);
   const projNames = Object.entries(h.byProject)
     .sort((a, b) => b[1].sessions - a[1].sessions);
   for (const [proj, data] of projNames) {

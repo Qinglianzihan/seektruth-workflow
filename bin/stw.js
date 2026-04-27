@@ -218,23 +218,24 @@ const cmdNext = () => {
   console.log(`\n   完成阶段 ${next.id} 后，运行 stw next 继续。`);
 };
 
-const cmdStats = () => {
+const cmdStats = async () => {
   const rootDir = process.cwd();
-  const sub = process.argv[3];
+  const args = process.argv.slice(3); // everything after "stats"
+  const logIdx = args.indexOf("--log-tokens");
 
-  if (sub === "--log-tokens") {
-    const amount = parseInt(process.argv[4], 10);
+  if (logIdx !== -1) {
+    const amount = parseInt(args[logIdx + 1], 10);
     if (isNaN(amount) || amount <= 0) {
       console.log("用法: stw stats --log-tokens <数量> [备注]");
       return;
     }
-    const note = process.argv.slice(5).join(" ") || "";
+    const note = args.slice(logIdx + 2).join(" ") || "";
     logTokens(rootDir, amount, note);
     console.log(`✅ 已记录 ${amount} tokens${note ? ` (${note})` : ""}`);
     return;
   }
 
-  console.log(generateStatsReport(rootDir));
+  console.log(await generateStatsReport(rootDir));
 };
 
 const cmdReport = () => {
@@ -271,7 +272,10 @@ switch (command) {
     cmdReport();
     break;
   case "stats":
-    cmdStats();
+    cmdStats().catch((err) => {
+      console.error(`\n❌ stats 失败: ${err.message}`);
+      process.exit(1);
+    });
     break;
   case "--help":
   case "-h":

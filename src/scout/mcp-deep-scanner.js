@@ -11,6 +11,7 @@ const PLUGIN_MARKETPLACE = join(homedir(), ".claude", "plugins", "marketplaces")
 const INSTALLED_PLUGINS = join(homedir(), ".claude", "plugins", "installed_plugins.json");
 
 const CONNECT_TIMEOUT = 10_000;
+const MAX_CONCURRENT = 4;
 
 function tryReadJson(filePath) {
   try {
@@ -111,10 +112,15 @@ export async function deepScanMcp(rootDir) {
   const defs = collectServerDefs(rootDir);
   if (defs.length === 0) return { servers: [], summary: "未发现可连接的 MCP 服务器" };
 
-  const results = await Promise.allSettled(defs.map((d) => probeServer(d)));
-  const servers = results.map((r) =>
-    r.status === "fulfilled" ? r.value : { name: "?", status: "error", error: r.reason?.message },
-  );
+  // Limit concurrent probes to avoid spawning too many processes
+  const servers = [];
+  for (let i = 0; i < defs.length; i += MAX_CONCURRENT) {
+    const batch = defs.slice(i, i + MAX_CONCURRENT);
+    const batchResults = await Promise.allSettled(batch.map((d) => probeServer(d)));
+    for (const r of batchResults) {
+      servers.push(r.status === "fulfilled" ? r.value : { name: "?", status: "error", error: r.reason?.message });
+    }
+  }
 
   const okCount = servers.filter((s) => s.status === "ok").length;
   const skipCount = servers.filter((s) => s.status === "skipped").length;
