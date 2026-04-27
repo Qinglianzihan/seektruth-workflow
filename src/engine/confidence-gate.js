@@ -34,6 +34,7 @@ export function assessConfidence(rootDir) {
   const gaps = [];
 
   const steps = [
+    { label: "项目风格侦察 — 从群众中来", marker: "## 1.5 项目风格侦察" },
     { label: "去粗 — 过滤噪音", marker: "## 2.1 去粗" },
     { label: "取精 — 提取精华", marker: "## 2.2 取精" },
     { label: "去伪 — 消除假象", marker: "## 2.3 去伪" },
@@ -47,6 +48,13 @@ export function assessConfidence(rootDir) {
     if (!sectionHasContent(content, step.marker)) {
       gaps.push(`${step.label} — 尚未填写`);
     }
+  }
+
+  // Source citation check (反对主观主义)
+  const citationPattern = /\([^)]*\.[a-z]{1,8}:\d+\)/g;
+  const citations = content.match(citationPattern) || [];
+  if (citations.length < 2) {
+    gaps.push("源码引用 — 至少需要 2 条 (file:line) 格式引用，禁止主观臆断");
   }
 
   const filled = steps.length - gaps.length;

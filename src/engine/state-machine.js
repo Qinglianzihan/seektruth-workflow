@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { parseAttackZones } from "./lockdown.js";
+import { parseAttackZones, checkFileBounds } from "./lockdown.js";
 import { assessConfidence } from "./confidence-gate.js";
 
 export const PHASES = [
@@ -123,6 +123,22 @@ export function advancePhase(rootDir) {
           required: `补充以下章节:${gapList}`,
         };
       }
+    }
+  }
+
+  // File bounds check: phase 3→4
+  if (progress.phase === 3) {
+    const bounds = checkFileBounds(rootDir);
+    if (!bounds.ok) {
+      if (bounds.error) {
+        return { ok: false, error: bounds.error };
+      }
+      const violationList = bounds.violations.map((f) => `  · ${f}`).join("\n");
+      return {
+        ok: false,
+        error: `检测到 ${bounds.violations.length} 个文件越界修改（共 ${bounds.totalFiles} 个变更文件）：\n${violationList}`,
+        required: `仅允许修改以下区域: ${bounds.zones.join(", ")}。将越界文件回滚后重试。`,
+      };
     }
   }
 

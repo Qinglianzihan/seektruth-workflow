@@ -11,6 +11,7 @@ import {
   rollbackSession,
 } from "../../src/engine/state-machine.js";
 import { freshDir, writeStwFile, writePassingAnalysis } from "../test-helper.js";
+import { spawnSync } from "node:child_process";
 
 describe("State Machine — basic operations", () => {
   it("getCurrentPhase returns null when no session", () => {
@@ -231,4 +232,80 @@ describe("State Machine — rollback", () => {
     const session = getCurrentPhase(dir);
     assert.deepEqual(session.iterations, []);
   });
+});
+
+describe("State Machine — file bounds enforcement (phase 3→4)", () => {
+  /** Create a temp dir with git repo, return { dir, run }. */
+  function freshGitDir() {
+    const dir = freshDir();
+    const run = (args) => spawnSync("git", args, { cwd: dir, encoding: "utf-8", timeout: 5000 });
+    run(["init"]);
+    run(["config", "user.email", "t@t"]);
+    run(["config", "user.name", "t"]);
+    return { dir, run };
+  }
+
+  it("phase 3→4 blocked when file modified outside attack zone", () => {
+    const { dir, run } = freshGitDir();
+
+    // Set up zone declaration and committed baseline
+    writeStwFile(dir, "STW-Workspace.md", "# W\n<!-- ATTACK_ZONE: src/* -->");
+    mkdirSync(join(dir, "src"), { recursive: true });
+    mkdirSync(join(dir, "dist"), { recursive: true });
+    writeFileSync(join(dir, "src", "app.js"), "orig");
+    writeFileSync(join(dir, "dist", "bundle.js"), "orig");
+    run(["add", "-A"]);
+    run(["commit", "-m", "baseline"]);
+
+    // Prep for workflow
+    writePassingAnalysis(dir);
+    writeStwFile(dir, "lockdown.json", '{"attackZones":["src/*"]}');
+    startSession(dir);
+    advancePhase(dir); // 1→2
+    advancePhase(dir); // 2→3
+
+    // Modify file OUTSIDE attack zone
+    writeFileSync(join(dir, "dist", "bundle.js"), "changed");
+
+    const result = advancePhase(dir); // 3→4 should be blocked
+    assert.equal(result.ok, false);
+    assert.ok(result.error.includes("越界修改"), "should mention 越界, got: " + result.error);
+  });
+
+  it("phase 3→4 passes when all changes inside zone", () => {
+    const { dir, run } = freshGitDir();
+
+    writeStwFile(dir, "STW-Workspace.md", "# W\n<!-- ATTACK_ZONE: src/* -->");
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src", "app.js"), "orig");
+    run(["add", "-A"]);
+    run(["commit", "-m", "baseline"]);
+
+    writePassingAnalysis(dir);
+    writeStwFile(dir, "lockdown.json", '{"attackZones":["src/*"]}');
+    startSession(dir);
+    advancePhase(dir); // 1→2
+    advancePhase(dir); // 2→3
+
+    // Modify file INSIDE attack zone only
+    writeFileSync(join(dir, "src", "app.js"), "changed");
+
+    const result = advancePhase(dir); // 3→4
+    assert.equal(result.ok, true);
+    assert.equal(result.phase.id, 4);
+  });
+
+  it("phase 3→4 passes in non-git directory (no diff to check)", () => {
+    const dir = freshDir();
+    writePassingAnalysis(dir);
+    writeStwFile(dir, "STW-Workspace.md", "# W\n<!-- ATTACK_ZONE: src/* -->");
+    writeStwFile(dir, "lockdown.json", "{}");
+    startSession(dir);
+    advancePhase(dir); // 1→2
+    advancePhase(dir); // 2→3
+    const result = advancePhase(dir); // 3→4 — no git, no diff
+    assert.equal(result.ok, true);
+    assert.equal(result.phase.id, 4);
+  });
+
 });

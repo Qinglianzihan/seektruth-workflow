@@ -17,6 +17,7 @@ import { archiveReport, listReports, getRecentSummaries } from "../src/engine/re
 import { getStats, generateStatsReport, logTokens } from "../src/engine/stats.js";
 import { getRelatedErrors } from "../src/engine/error-registry.js";
 import { deepScanMcp } from "../src/scout/mcp-deep-scanner.js";
+import { injectQuote } from "../src/engine/quote-injector.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8"));
@@ -105,6 +106,7 @@ const cmdInit = async (deep) => {
   const stwDir = writeStwFiles(rootDir, environment, conflicts);
   console.log(`\n✅ 求是工作流已初始化: ${stwDir}`);
   console.log("   下一步：将 .stw/STW-Workspace.md 内容作为 AI 系统提示。");
+  console.log(injectQuote(rootDir));
 };
 
 const cmdStatus = () => {
@@ -147,6 +149,7 @@ const cmdStatus = () => {
     console.error(`\n❌ status 失败: ${err.message}`);
     process.exit(1);
   }
+  console.log(injectQuote(rootDir));
 };
 
 const cmdStart = () => {
@@ -200,12 +203,13 @@ const cmdStart = () => {
     console.error(`\n❌ start 失败: ${err.message}`);
     process.exit(1);
   }
+  console.log(injectQuote(rootDir));
 };
 
 const phaseGuidance = {
   1: "完成调研后，运行 stw next 推进（将自动进行战前评估，阈值 6/10）。调研不充分不进入下一阶段。",
   2: "已在 STW-Workspace.md 中声明 ATTACK_ZONE，专注封锁清单自动生成。AI 不得修改封锁区域外的任何文件。",
-  3: "运行测试套件验证修改的正确性，确保全部通过。然后创建 .stw/test-results.json {\"passed\":true} 作为交付证据。",
+  3: "运行测试套件验证修改的正确性，确保全部通过。stw next 时将自动检查 git diff 是否越界。然后创建 .stw/test-results.json {\"passed\":true}。",
   4: "填写 .stw/Summary-Template.md 中的总结报告，记录认知迭代。",
 };
 
@@ -271,6 +275,7 @@ const cmdNext = () => {
     console.error(`\n❌ next 失败: ${err.message}`);
     process.exit(1);
   }
+  console.log(injectQuote(rootDir));
 };
 
 const cmdStats = async () => {
@@ -291,6 +296,7 @@ const cmdStats = async () => {
   }
 
   console.log(await generateStatsReport(rootDir));
+  console.log(injectQuote(rootDir));
 };
 
 const cmdReport = () => {
@@ -308,6 +314,7 @@ const cmdReport = () => {
     console.error(`\n❌ report 失败: ${err.message}`);
     process.exit(1);
   }
+  console.log(injectQuote(rootDir));
 };
 
 const cmdRollback = () => {
@@ -334,6 +341,7 @@ const cmdRollback = () => {
     console.error(`\n❌ rollback 失败: ${err.message}`);
     process.exit(1);
   }
+  console.log(injectQuote(rootDir));
 };
 
 const cmdAbort = () => {
@@ -349,6 +357,7 @@ const cmdAbort = () => {
     console.error(`\n❌ abort 失败: ${err.message}`);
     process.exit(1);
   }
+  console.log(injectQuote(rootDir));
 };
 
 const cmdRepair = () => {
@@ -374,6 +383,7 @@ const cmdRepair = () => {
     console.error(`\n❌ repair 失败: ${err.message}`);
     process.exit(1);
   }
+  console.log(injectQuote(rootDir));
 };
 
 switch (command) {
