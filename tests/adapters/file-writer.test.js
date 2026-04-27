@@ -126,3 +126,53 @@ describe("File Writer — edge cases", () => {
     assert.ok(ws.includes("Skill A conflicts with Skill B"));
   });
 });
+
+describe("File Writer — Claude Code integration", () => {
+  const claudeEnv = {
+    project: null,
+    aiTools: [{ name: "Claude Code", source: "test" }],
+    mcpConfigs: [],
+    skills: [],
+  };
+
+  it("creates .claude/skills/stw.md when Claude Code detected", () => {
+    const dir = freshDir();
+    writeStwFiles(dir, claudeEnv, EMPTY_CONFLICTS);
+    const skillPath = join(dir, ".claude", "skills", "stw.md");
+    assert.ok(existsSync(skillPath), "should create skill file");
+    const skill = readFileSync(skillPath, "utf-8");
+    assert.ok(skill.includes("求是工作流"));
+    assert.ok(skill.includes("stw status"));
+  });
+
+  it("creates CLAUDE.md with STW reference when missing", () => {
+    const dir = freshDir();
+    writeStwFiles(dir, claudeEnv, EMPTY_CONFLICTS);
+    const claudeMdPath = join(dir, "CLAUDE.md");
+    assert.ok(existsSync(claudeMdPath), "should create CLAUDE.md");
+    const content = readFileSync(claudeMdPath, "utf-8");
+    assert.ok(content.includes("STW 工作流规范"));
+    assert.ok(content.includes(".stw/STW-Workspace.md"));
+  });
+
+  it("appends to existing CLAUDE.md without duplication", () => {
+    const dir = freshDir();
+    const claudeMdPath = join(dir, "CLAUDE.md");
+    writeFile(dir, "CLAUDE.md", "# My Project\n\nCustom rules here.\n");
+    writeStwFiles(dir, claudeEnv, EMPTY_CONFLICTS);
+    const content = readFileSync(claudeMdPath, "utf-8");
+    assert.ok(content.includes("Custom rules here"));
+    assert.ok(content.includes("STW 工作流规范"));
+    // No double append
+    writeStwFiles(dir, claudeEnv, EMPTY_CONFLICTS);
+    const content2 = readFileSync(claudeMdPath, "utf-8");
+    assert.equal(content2, content);
+  });
+
+  it("does not create Claude Code files when not detected", () => {
+    const dir = freshDir();
+    writeStwFiles(dir, EMPTY_ENV, EMPTY_CONFLICTS);
+    assert.ok(!existsSync(join(dir, ".claude")));
+    assert.ok(!existsSync(join(dir, "CLAUDE.md")));
+  });
+});

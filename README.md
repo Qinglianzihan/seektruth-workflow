@@ -41,58 +41,47 @@ stw next                            # 按流程推进，AI 完成每阶段交付
 
 ## 在 AI 编程工具中使用
 
-STW 不绑定任何特定 AI 工具。工作流的核心是 **CLI 把关 + AI 执行**：
+### Claude Code（原生集成）
 
-```
-                  ┌──────────────────────────┐
-                  │      stw (你来执行)        │
-                  │  init / start / next /    │
-                  │  rollback / report        │
-                  └──────────┬───────────────┘
-                             │ 检查交付物 / 门禁
-                             ▼
-                  ┌──────────────────────────┐
-                  │    AI 助手 (Claude/Codex) │
-                  │  读取 .stw/STW-Workspace  │
-                  │  填写模板 → 写代码 → 测试  │
-                  └──────────────────────────┘
-```
+`stw init` 检测到 Claude Code 后自动配置：
 
-### Claude Code
-
-在项目根目录初始化后，直接在对话中告诉 Claude：
-
-> 请读取 `.stw/STW-Workspace.md`，严格按照求是工作流规范完成任务。
-
-或者将 `STW-Workspace.md` 内容写入 `CLAUDE.md`，Claude 每次会话自动加载。
-
-### Codex (OpenAI)
-
-将 `.stw/STW-Workspace.md` 内容粘贴到 Codex 的系统提示或项目指令中。
-
-### 典型会话节奏
+- **`/stw` 命令** — 对话中直接 `/stw status`、`/stw next`，无需切出终端
+- **CLAUDE.md 注入** — 工作流规范自动写入项目 `CLAUDE.md`，每次会话自动加载
 
 ```bash
-stw start --desc "添加用户认证模块"
+stw init              # 自动配置 Skill + CLAUDE.md
+stw start --desc "添加用户认证"
 
-# → Claude: "按 STW-Workspace.md 规范，完成阶段 1 调查研究"
-# → AI 阅读代码，填写 .stw/Analysis-Template.md
-
-stw next    # 置信度门禁检查 → 通过 → 进入阶段 2
-stw next    # ATTACK_ZONE 检查 → 通过 → 进入阶段 3
-
-# → Claude: "在 ATTACK_ZONE 范围内实现认证功能"
-# → AI 修改代码，运行测试
-
-stw next    # 越界+变更计划+依赖检查 → 通过 → 进入阶段 4
-# 创建 .stw/test-results.json {"passed":true,"total":12,"failed":0}
-
-stw next    # 人工核查清单 → 进入阶段 5
-# → Claude: "填写总结报告"
-stw report  # 归档，经验教训入库
+# Claude 已自动加载工作流规范，你只需在对话中：
+#   1. 让 Claude 按阶段 1 完成调研
+#   2. 输入 /stw next   ← 在对话中直接推进！
+#   3. 输入 /stw status ← 查看进度
 ```
 
-关键点：**AI 负责执行，你负责 `stw next` 把关**。门禁不通过，AI 继续改。
+工作节奏：
+
+```
+  你: "按 STW 规范完成阶段 1 调查研究"
+Claude: [阅读代码，填写 Analysis-Template.md]
+  你: /stw next         ← 置信度门禁自动检查
+Claude: [阶段 2 声明 ATTACK_ZONE]
+  你: /stw next
+Claude: [阶段 3 修改代码]
+  你: /stw next         ← 越界+变更计划+依赖检查
+  ...                    ← 测试、人工核查、总结
+```
+
+### Codex / 其他工具
+
+将 `.stw/STW-Workspace.md` 内容粘贴到系统提示或项目指令中。工作流命令在终端执行：
+
+```bash
+stw next     # 门禁检查
+stw rollback 需求变化，重新调研
+stw report   # 归档总结
+```
+
+关键点不变：**AI 执行，你 `/stw next` 把关**。
 
 ---
 
