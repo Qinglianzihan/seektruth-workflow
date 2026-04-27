@@ -1,0 +1,19 @@
+{
+  "name": "seektruth-workflow",
+  "version": "0.0.1",
+  "description": "将《毛泽东选集》哲学方法论转化为 AI 编程的结构化工作纪律",
+  "type": "module",
+  "bin": {
+    "stw": "bin/stw.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test tests/**/*.test.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0"
+  }
+}

@@ -1,0 +1,78 @@
+import { existsSync, readFileSync, writeFileSync, readdirSync, mkdirSync, copyFileSync } from "node:fs";
+import { join } from "node:path";
+
+const REPORTS_DIR = ".stw/reports";
+
+/**
+ * Archive the current Summary-Template.md as a timestamped report.
+ */
+export function archiveReport(rootDir) {
+  const summaryPath = join(rootDir, ".stw", "Summary-Template.md");
+  if (!existsSync(summaryPath)) {
+    return { ok: false, error: "Summary-Template.md 不存在。请先填写总结报告。" };
+  }
+
+  const content = readFileSync(summaryPath, "utf-8");
+  // Check if user has filled in any actual content beyond the empty template
+  const templateComments = content.match(/<!--.*-->/g) || [];
+  const emptyTableRow = content.includes("| **任务** | |");
+  if (emptyTableRow && templateComments.length > 0) {
+    return { ok: false, error: "总结报告尚未填写。请先在 .stw/Summary-Template.md 中完成总结。" };
+  }
+
+  const reportsDir = join(rootDir, REPORTS_DIR);
+  mkdirSync(reportsDir, { recursive: true });
+
+  const now = new Date();
+  const timestamp = now.toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  const reportName = `summary-${timestamp}.md`;
+  const reportPath = join(reportsDir, reportName);
+
+  copyFileSync(summaryPath, reportPath);
+
+  return { ok: true, path: reportPath, name: reportName };
+}
+
+/**
+ * List all archived reports, sorted newest first.
+ */
+export function listReports(rootDir) {
+  const reportsDir = join(rootDir, REPORTS_DIR);
+  if (!existsSync(reportsDir)) return [];
+
+  const files = readdirSync(reportsDir)
+    .filter((f) => f.startsWith("summary-") && f.endsWith(".md"))
+    .sort()
+    .reverse();
+
+  return files.map((f) => ({
+    name: f,
+    path: join(reportsDir, f),
+  }));
+}
+
+/**
+ * Get summaries from the most recent N reports.
+ */
+export function getRecentSummaries(rootDir, count = 3) {
+  const reports = listReports(rootDir);
+  const recent = reports.slice(0, count);
+
+  return recent.map((r) => {
+    const content = readFileSync(r.path, "utf-8");
+    // Extract title and first meaningful section
+    const lines = content.split("\n");
+    const title = lines.find((l) => l.startsWith("# "))?.replace("# ", "") || r.name;
+    // Find the "战役概述" section
+    const overviewStart = content.indexOf("## 1. 战役概述");
+    let snippet;
+    if (overviewStart !== -1) {
+      const snippetEnd = content.indexOf("## ", overviewStart + 2);
+      snippet = content.slice(overviewStart, snippetEnd !== -1 ? snippetEnd : undefined)
+        .split("\n").slice(1, 5).join("; ").trim();
+    } else {
+      snippet = "";
+    }
+    return { name: r.name, title, snippet };
+  });
+}
