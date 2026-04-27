@@ -20,6 +20,12 @@
 npm install -g seektruth-workflow
 ```
 
+更新到最新版：
+
+```bash
+npm update -g seektruth-workflow
+```
+
 要求 Node.js ≥ 18。
 
 ## 一分钟上手
