@@ -2,13 +2,17 @@
   <img src="./assets/mao-cover.jpg" width="160" alt="毛泽东选集">
 </p>
 
+<p align="center">
+  📖 <a href="./assets/毛泽东选集.pdf"><strong>《毛泽东选集》（全五卷）PDF 下载</strong></a>
+</p>
+
 <h1 align="center">求是工作流</h1>
 <p align="center"><em>将《毛泽东选集》哲学方法论转化为 AI 编程的结构化工作纪律。</em></p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/seektruth-workflow"><img src="https://img.shields.io/npm/v/seektruth-workflow?color=c00" alt="npm"></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/seektruth-workflow" alt="node"></a>
-  <img src="https://img.shields.io/badge/tests-156%20pass-brightgreen" alt="tests">
+  <img src="https://img.shields.io/badge/tests-164%20pass-brightgreen" alt="tests">
   <a href="./LICENSE"><img src="https://img.shields.io/npm/l/seektruth-workflow" alt="license MIT"></a>
 </p>
 
@@ -47,11 +51,14 @@ stw next                            # 按流程推进，AI 完成每阶段交付
 
 | 工具 | 自动注入方式 | 命令执行方式 |
 |:---|:---|:---|
-| **Claude Code** | `CLAUDE.md` + `.claude/skills/stw.md` | 对话中 `/stw status`、`/stw next` |
+| **Claude Code** | `CLAUDE.md` + `.claude/skills/stw.md` | 对话中 `/stw` 命令 |
 | **Codex CLI** | `AGENTS.md` | 终端 `stw next` |
 | **Cursor** | `.cursorrules` | 终端 `stw next` |
 | **Cline** | `.clinerules` | 终端 `stw next` |
 | **OpenCode** | `OPenCODE.md` | 终端 `stw next` |
+| **Windsurf** | `.windsurfrules` | 终端 `stw next` |
+| **GitHub Copilot** | `.github/copilot-instructions.md` | 终端 `stw next` |
+| **Aider** | `.aiderrules` | 终端 `stw next` |
 
 ### 通用流程
 
@@ -160,14 +167,6 @@ stw repair                 # 修复/重生成 .stw 文件
 
 ---
 
-## 推荐阅读
-
-<p align="center">
-  📖 <a href="./assets/毛泽东选集.pdf"><strong>《毛泽东选集》（全五卷）— PDF 下载</strong></a>
-</p>
-
 <p align="center"><em>"读书是学习，使用也是学习，而且是更重要的学习。"</em></p>
-
----
 
 <p align="center">MIT · v0.3.0 · 164 tests · <a href="https://github.com/Qinglianzihan/seektruth-workflow">GitHub</a></p>

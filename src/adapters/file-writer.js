@@ -173,6 +173,36 @@ export function writeStwFiles(rootDir, environment, conflicts) {
         "",
       ],
     },
+    Windsurf: {
+      files: [".windsurfrules"],
+      content: [
+        "<!-- STW 工作流规范（由 stw init 自动生成） -->",
+        "",
+        "读取 `.stw/STW-Workspace.md`，严格按照五阶段规范执行所有任务。",
+        "在终端中运行 `stw status` 查看进度，`stw next` 推进阶段。",
+        "",
+      ],
+    },
+    "GitHub Copilot": {
+      files: [".github/copilot-instructions.md"],
+      content: [
+        "<!-- STW 工作流规范（由 stw init 自动生成） -->",
+        "",
+        "读取 `.stw/STW-Workspace.md`，严格按照五阶段规范执行所有任务。",
+        "在终端中运行 `stw status` 查看进度，`stw next` 推进阶段。",
+        "",
+      ],
+    },
+    Aider: {
+      files: [".aiderrules"],
+      content: [
+        "<!-- STW 工作流规范（由 stw init 自动生成） -->",
+        "",
+        "读取 `.stw/STW-Workspace.md`，严格按照五阶段规范执行所有任务。",
+        "在终端中运行 `stw status` 查看进度，`stw next` 推进阶段。",
+        "",
+      ],
+    },
   };
 
   const stwRefMarker = "STW 工作流规范";

@@ -211,4 +211,31 @@ describe("File Writer — Claude Code integration", () => {
     assert.ok(existsSync(path));
     assert.ok(readFileSync(path, "utf-8").includes("STW 工作流规范"));
   });
+
+  it("creates .windsurfrules when Windsurf detected", () => {
+    const dir = freshDir();
+    const env = { project: null, aiTools: [{ name: "Windsurf", source: "test" }], mcpConfigs: [], skills: [] };
+    writeStwFiles(dir, env, EMPTY_CONFLICTS);
+    const path = join(dir, ".windsurfrules");
+    assert.ok(existsSync(path));
+    assert.ok(readFileSync(path, "utf-8").includes("STW 工作流规范"));
+  });
+
+  it("creates .github/copilot-instructions.md when GitHub Copilot detected", () => {
+    const dir = freshDir();
+    const env = { project: null, aiTools: [{ name: "GitHub Copilot", source: "test" }], mcpConfigs: [], skills: [] };
+    writeStwFiles(dir, env, EMPTY_CONFLICTS);
+    const path = join(dir, ".github", "copilot-instructions.md");
+    assert.ok(existsSync(path));
+    assert.ok(readFileSync(path, "utf-8").includes("STW 工作流规范"));
+  });
+
+  it("creates .aiderrules when Aider detected", () => {
+    const dir = freshDir();
+    const env = { project: null, aiTools: [{ name: "Aider", source: "test" }], mcpConfigs: [], skills: [] };
+    writeStwFiles(dir, env, EMPTY_CONFLICTS);
+    const path = join(dir, ".aiderrules");
+    assert.ok(existsSync(path));
+    assert.ok(readFileSync(path, "utf-8").includes("STW 工作流规范"));
+  });
 });

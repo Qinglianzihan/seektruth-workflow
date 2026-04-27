@@ -42,6 +42,27 @@ export function detectAiTools() {
     }
   }
 
+  // Windsurf
+  const WINDSURF_DIR = join(homedir(), ".windsurf");
+  if (existsSync(WINDSURF_DIR)) {
+    tools.push({ name: "Windsurf", source: "config_dir" });
+  }
+
+  // GitHub Copilot (VSCode extension)
+  for (const vsDir of [".vscode", ".vscode-oss", ".vscode-insiders"]) {
+    const copilotPath = join(homedir(), vsDir, "extensions", "github.copilot");
+    if (existsSync(copilotPath)) {
+      tools.push({ name: "GitHub Copilot", source: "extension_dir" });
+      break;
+    }
+  }
+
+  // Aider
+  const AIDER_DIR = join(homedir(), ".aider");
+  if (existsSync(AIDER_DIR)) {
+    tools.push({ name: "Aider", source: "config_dir" });
+  }
+
   return tools;
 }
 
