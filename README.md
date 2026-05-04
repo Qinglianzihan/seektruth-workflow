@@ -209,6 +209,4 @@ stw repair                 # 修复/重生成 .stw 文件
 
 <p align="center"><em>"读书是学习，使用也是学习，而且是更重要的学习。"</em></p>
 
-<p align="center">MIT · v0.3.0 · 164 tests · <a href="https://github.com/Qinglianzihan/seektruth-workflow">GitHub</a></p>
-
-
+<p align="center">MIT · v0.3.5 · 180 tests · <a href="https://github.com/Qinglianzihan/seektruth-workflow">GitHub</a></p>
