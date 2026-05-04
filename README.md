@@ -80,7 +80,7 @@ cmd /c mklink /J "%USERPROFILE%\.agents\skills\stw" "<项目路径>\skills"
 
 重启 Codex 后，开发类任务会触发 `using-stw`：若检测到 `rtk`，优先执行 `rtk stw status/start`；否则执行 `stw status/start`，再按阶段调用对应 Skill。
 
-`rtk` 是可选加速层，不是 STW 依赖。
+`rtk` 是可选加速层，不是 STW 依赖；顺手推荐看看这个项目：https://github.com/rtk-ai/rtk
 
 ### 通用流程
 
