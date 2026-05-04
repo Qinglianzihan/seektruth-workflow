@@ -11,6 +11,35 @@ function readTemplate(name) {
   return readFileSync(path, "utf-8");
 }
 
+function timestampName() {
+  return new Date().toISOString().replace(/[:.]/g, "-");
+}
+
+function uniqueDir(baseDir, name) {
+  let candidate = join(baseDir, name);
+  let i = 1;
+  while (existsSync(candidate)) {
+    candidate = join(baseDir, `${name}-${i++}`);
+  }
+  return candidate;
+}
+
+function archiveExistingStwFile(stwDir, name) {
+  const path = join(stwDir, name);
+  if (!existsSync(path)) return;
+  const historyDir = uniqueDir(join(stwDir, "history"), timestampName());
+  mkdirSync(historyDir, { recursive: true });
+  copyFileSync(path, join(historyDir, name));
+}
+
+function writeGeneratedStwFile(stwDir, name, content) {
+  const path = join(stwDir, name);
+  if (existsSync(path) && readFileSync(path, "utf-8") !== content) {
+    archiveExistingStwFile(stwDir, name);
+  }
+  writeFileSync(path, content);
+}
+
 
 function copyDirFiles(srcDir, destDir) {
   if (!existsSync(srcDir)) return;
@@ -136,17 +165,17 @@ export function writeStwFiles(rootDir, environment, conflicts) {
     .replaceAll(/\{\{MCP_TABLE\}\}/g, makeMcpTable(environment.mcpConfigs))
     .replaceAll(/\{\{SKILLS_TABLE\}\}/g, makeSkillsTable(environment.skills))
     .replaceAll(/\{\{CONFLICT_WARNINGS\}\}/g, makeConflictWarnings(conflicts));
-  writeFileSync(join(stwDir, "STW-Workspace.md"), workspace);
+  writeGeneratedStwFile(stwDir, "STW-Workspace.md", workspace);
 
   // Analysis-Template.md
   const analysis = readTemplate("Analysis-Template.md")
     .replaceAll(/\{\{DATE\}\}/g, now);
-  writeFileSync(join(stwDir, "Analysis-Template.md"), analysis);
+  writeGeneratedStwFile(stwDir, "Analysis-Template.md", analysis);
 
   // Summary-Template.md
   const summary = readTemplate("Summary-Template.md")
     .replaceAll(/\{\{DATE\}\}/g, now);
-  writeFileSync(join(stwDir, "Summary-Template.md"), summary);
+  writeGeneratedStwFile(stwDir, "Summary-Template.md", summary);
 
   // 审查员 agent 定义文件（可选模板，不存在则跳过）
   const reviewerMd = join(TEMPLATES_DIR, "审查员.md");

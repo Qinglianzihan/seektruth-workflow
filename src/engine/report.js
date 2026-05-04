@@ -25,8 +25,13 @@ export function archiveReport(rootDir) {
 
   const now = new Date();
   const timestamp = now.toISOString().replace(/[:.]/g, "-").slice(0, 19);
-  const reportName = `summary-${timestamp}.md`;
-  const reportPath = join(reportsDir, reportName);
+  let reportName = `summary-${timestamp}.md`;
+  let reportPath = join(reportsDir, reportName);
+  let i = 1;
+  while (existsSync(reportPath)) {
+    reportName = `summary-${timestamp}-${i++}.md`;
+    reportPath = join(reportsDir, reportName);
+  }
 
   copyFileSync(summaryPath, reportPath);
 

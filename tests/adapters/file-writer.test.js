@@ -1,6 +1,6 @@
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { writeStwFiles } from "../../src/adapters/file-writer.js";
 import { freshDir, writeFile } from "../test-helper.js";
@@ -34,6 +34,34 @@ describe("File Writer — basic output", () => {
     const dir = freshDir();
     writeStwFiles(dir, EMPTY_ENV, EMPTY_CONFLICTS);
     assert.ok(existsSync(join(dir, ".stw", "reports", ".gitkeep")));
+  });
+
+  it("preserves existing STW documents and persistent records on repeated init", () => {
+    const dir = freshDir();
+    writeStwFiles(dir, EMPTY_ENV, EMPTY_CONFLICTS);
+
+    writeFile(dir, ".stw/Analysis-Template.md", "# Old analysis\nimportant investigation");
+    writeFile(dir, ".stw/Summary-Template.md", "# Old summary\nimportant lessons");
+    writeFile(dir, ".stw/STW-Workspace.md", "# Old workspace\n<!-- ATTACK_ZONE: old -->");
+    writeFile(dir, ".stw/error-registry.json", JSON.stringify([{ id: "err-1", description: "keep me" }], null, 2));
+    writeFile(dir, ".stw/stats.json", JSON.stringify({ totalTokens: 123, tokenLogs: [{ amount: 123 }] }, null, 2));
+    writeFile(dir, ".stw/reports/summary-old.md", "old report");
+
+    writeStwFiles(dir, EMPTY_ENV, EMPTY_CONFLICTS);
+
+    assert.ok(readFileSync(join(dir, ".stw", "Analysis-Template.md"), "utf-8").includes("# "));
+    assert.deepEqual(JSON.parse(readFileSync(join(dir, ".stw", "error-registry.json"), "utf-8")), [{ id: "err-1", description: "keep me" }]);
+    assert.equal(JSON.parse(readFileSync(join(dir, ".stw", "stats.json"), "utf-8")).totalTokens, 123);
+    assert.equal(readFileSync(join(dir, ".stw", "reports", "summary-old.md"), "utf-8"), "old report");
+
+    const historyRoot = join(dir, ".stw", "history");
+    assert.ok(existsSync(historyRoot));
+    const archived = readdirSync(historyRoot)
+      .map((dirName) => join(historyRoot, dirName, "Summary-Template.md"))
+      .filter((path) => existsSync(path))
+      .map((path) => readFileSync(path, "utf-8"))
+      .join("\n");
+    assert.ok(archived.includes("important lessons"));
   });
 
   it("config.json is valid JSON with expected fields", () => {

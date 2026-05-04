@@ -31,6 +31,21 @@ describe("Report — archiveReport", () => {
     assert.ok(result.name.startsWith("summary-"));
     assert.ok(existsSync(result.path));
   });
+
+  it("does not overwrite reports archived in the same second", () => {
+    const dir = freshDir();
+    writeSummary(dir, "# First\n\n| **任务** | X |\nfirst");
+    const first = archiveReport(dir);
+    writeSummary(dir, "# Second\n\n| **任务** | Y |\nsecond");
+    const second = archiveReport(dir);
+
+    assert.equal(first.ok, true);
+    assert.equal(second.ok, true);
+    assert.notEqual(second.name, first.name);
+    assert.ok(existsSync(first.path));
+    assert.ok(existsSync(second.path));
+    assert.equal(listReports(dir).length, 2);
+  });
 });
 
 describe("Report — listReports", () => {

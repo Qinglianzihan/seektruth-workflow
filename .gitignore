@@ -1,6 +1,9 @@
 # 依赖
 node_modules/
 
+# STW 本地运行态
+.stw/
+
 # 构建产物（stw init 在目标项目的输出，保留 reports 可追踪）
 .stw/config.json
 .stw/STW-Workspace.md

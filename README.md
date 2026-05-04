@@ -192,6 +192,8 @@ stw stats --log-tokens <N> # 记录 Token 消耗
 stw repair                 # 修复/重生成 .stw 文件
 ```
 
+重复运行 `stw init` / `stw repair` 不会直接丢弃旧记录；已有 `.stw` 文档被刷新前会自动备份到 `.stw/history/<时间戳>/`，历史 reports、stats、error registry 会保留。
+
 ---
 
 ## 哲学映射
