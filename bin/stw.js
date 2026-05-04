@@ -21,6 +21,7 @@ import { getRelatedErrors } from "../src/engine/error-registry.js";
 import { deepScanMcp } from "../src/scout/mcp-deep-scanner.js";
 import { injectQuote } from "../src/engine/quote-injector.js";
 import { PHASE_STORIES, ERROR_FRIENDLY, STATUS_EMPTY } from "../src/engine/messages.js";
+import { startForge, getForgeStatus, inspectForgeAgent, advanceForge, acceptForge, abortForge, runForgeAgents, AGENTS } from "../src/engine/forge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8"));
@@ -43,6 +44,7 @@ const help = () => {
   console.log("  report         存档当前总结报告");
   console.log("  repair         修复/重新生成 .stw 文件");
   console.log("  stats          查看统计报告");
+  console.log("  forge          需求炼金炉：多 agent 需求讨论状态机");
 };
 
 const cmdInit = async (deep) => {
@@ -485,6 +487,135 @@ const cmdAbort = () => {
   console.log(injectQuote(rootDir));
 };
 
+
+const cmdForge = async () => {
+  const rootDir = process.cwd();
+  const args = process.argv.slice(3);
+  const sub = args[0];
+
+  try {
+    if (!sub || !["status", "inspect", "next", "accept", "confirm", "abort", "run"].includes(sub)) {
+      const idea = args.join(" ").trim();
+      if (!idea) {
+        console.log("用法: stw forge \"一句话需求\" | stw forge run | stw forge next | stw forge accept <用户确认> | stw forge status");
+        return;
+      }
+      const result = startForge(rootDir, idea);
+      if (!result.ok) {
+        console.log(`❌ ${result.error}`);
+        return;
+      }
+      console.log("\n🧪 需求炼金炉已启动");
+      console.log(`  原始需求：${result.session.idea}`);
+      console.log("  当前阶段：diverge / 专家独立发散");
+      console.log("\n  需要派发以下 agent，并把输出写入对应文件：");
+      for (const agent of AGENTS) {
+        console.log(`  · ${agent.id} (${agent.role}) → .stw/forge/rounds/001-diverge/${agent.id}.md`);
+      }
+      console.log("\n  查看状态：stw forge status");
+      return;
+    }
+
+    if (sub === "status") {
+      const result = getForgeStatus(rootDir);
+      if (!result.ok) {
+        console.log(`❌ ${result.error}`);
+        return;
+      }
+      console.log("\n🧪 需求炼金炉状态");
+      console.log(`  需求：${result.session.idea}`);
+      console.log(`  阶段：${result.session.phase}`);
+      console.log(`  状态：${result.session.status}`);
+      console.log(`  Agent：${result.agents.completed}/${result.agents.total} completed, ${result.agents.pending} pending`);
+      console.log(`  指标：必答问题 ${result.metrics.mustAnswerQuestions}，风险 ${result.metrics.risks}，延后项 ${result.metrics.deferredItems}`);
+      return;
+    }
+
+    if (sub === "inspect") {
+      const id = args[1];
+      if (!id) {
+        console.log("用法: stw forge inspect <agent>");
+        return;
+      }
+      const result = inspectForgeAgent(rootDir, id);
+      if (!result.ok) {
+        console.log(`❌ ${result.error}`);
+        return;
+      }
+      const a = result.agent;
+      console.log(`\n🤖 ${a.id} (${a.role})`);
+      console.log(`  状态：${a.status}`);
+      console.log(`  轮次：${a.round}`);
+      console.log(`  输出：${a.outputFile}`);
+      console.log(`  尝试：${a.attempts}`);
+      return;
+    }
+
+
+    if (sub === "run") {
+      const onlyIdx = args.indexOf("--only");
+      const only = onlyIdx !== -1 && args[onlyIdx + 1]
+        ? args[onlyIdx + 1].split(",").map((s) => s.trim()).filter(Boolean)
+        : null;
+      const force = args.includes("--force");
+      const providerIdx = args.indexOf("--provider");
+      const provider = providerIdx !== -1 && args[providerIdx + 1] ? args[providerIdx + 1] : undefined;
+      const modelIdx = args.indexOf("--model");
+      const model = modelIdx !== -1 && args[modelIdx + 1] ? args[modelIdx + 1] : undefined;
+      const result = await runForgeAgents(rootDir, { only, force, provider, model });
+      if (!result.ok) {
+        console.log("❌ forge run 未完全通过");
+        if (result.invalid?.length) console.log(`  格式无效：${result.invalid.join(", ")}`);
+        if (result.failed?.length) {
+          for (const f of result.failed) console.log(`  调用失败：${f.id} — ${f.error}`);
+        }
+        return;
+      }
+      console.log(`\n✅ forge run 完成：${result.completed} 个 agent`);
+      console.log("  下一步：stw forge next");
+      return;
+    }
+    if (sub === "next") {
+      const result = advanceForge(rootDir);
+      if (!result.ok) {
+        console.log(`❌ ${result.error}`);
+        return;
+      }
+      console.log(`\n✅ 需求炼金炉已推进到：${result.phase}`);
+      if (result.required) console.log(`  下一步：请处理 ${result.required}`);
+      if (result.phase === "user-confirm") console.log("  用户回答后：stw forge accept \"确认后的方向/范围\"");
+      return;
+    }
+
+    if (sub === "accept" || sub === "confirm") {
+      const answers = args.slice(1).join(" ").trim();
+      const result = acceptForge(rootDir, answers);
+      if (!result.ok) {
+        console.log(`❌ ${result.error}`);
+        return;
+      }
+      console.log("\n✅ 需求已固化，STW 五阶段已启动");
+      console.log(`  需求文档：${result.requirementsFile}`);
+      console.log("  当前阶段：1 / 调查研究");
+      console.log("  下一步：读取 .stw/forge/requirements.md，填写 .stw/Analysis-Template.md，然后 stw next");
+      return;
+    }
+
+    if (sub === "abort") {
+      const reason = args.slice(1).join(" ") || "未说明原因";
+      const result = abortForge(rootDir, reason);
+      if (!result.ok) {
+        console.log(`❌ ${result.error}`);
+        return;
+      }
+      console.log(`\n🛑 需求炼金炉已中止：${reason}`);
+    }
+  } catch (err) {
+    console.error(`\n❌ forge 失败: ${err.message}`);
+    process.exit(1);
+  }
+};
+
 const cmdRepair = () => {
   const rootDir = process.cwd();
   try {
@@ -538,6 +669,12 @@ switch (command) {
     break;
   case "repair":
     cmdRepair();
+    break;
+  case "forge":
+    cmdForge().catch((err) => {
+      console.error(`\n❌ forge 失败: ${err.message}`);
+      process.exit(1);
+    });
     break;
   case "stats":
     cmdStats().catch((err) => {

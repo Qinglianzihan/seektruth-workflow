@@ -1,0 +1,27 @@
+---
+name: stw-lockdown
+description: Use when STW is in Phase 3, when implementation may begin but file changes must stay inside declared ATTACK_ZONE and change plan boundaries
+---
+
+# STW Phase 3: Lockdown
+
+Goal: implement only inside the declared battlefield.
+
+## Required Actions
+
+1. Generate or verify lockdown:
+
+```powershell
+rtk stw next
+```
+
+2. If Phase 3 remains active, create/fix `.stw/lockdown.json` using declared ATTACK_ZONE.
+3. Edit only files covered by ATTACK_ZONE and Phase 1 change plan.
+4. Prefer minimal diffs and existing project style.
+5. After implementation, run the smallest relevant test command and record results for Phase 4.
+
+## Stop Conditions
+
+- Need to edit outside ATTACK_ZONE → stop, return to Phase 2/1.
+- Need new dependency → stop, update investigation and change plan first.
+- Test fails for unknown reason → investigate before changing more files.

@@ -9,7 +9,11 @@
   "files": [
     "bin/",
     "src/",
-    "templates/"
+    "templates/",
+    "skills/",
+    ".codex-plugin/",
+    ".claude-plugin/",
+    ".codex/INSTALL.md"
   ],
   "engines": {
     "node": ">=18"

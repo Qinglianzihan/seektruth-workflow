@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createDefaultConfig } from "./config-schema.js";
@@ -9,6 +9,43 @@ const TEMPLATES_DIR = join(__dirname, "..", "..", "templates");
 function readTemplate(name) {
   const path = join(TEMPLATES_DIR, name);
   return readFileSync(path, "utf-8");
+}
+
+
+function copyDirFiles(srcDir, destDir) {
+  if (!existsSync(srcDir)) return;
+  mkdirSync(destDir, { recursive: true });
+  for (const entry of readdirSync(srcDir, { withFileTypes: true })) {
+    const src = join(srcDir, entry.name);
+    const dest = join(destDir, entry.name);
+    if (entry.isDirectory()) {
+      copyDirFiles(src, dest);
+    } else if (entry.isFile()) {
+      copyFileSync(src, dest);
+    }
+  }
+}
+
+function writeNativePluginFiles(rootDir) {
+  const codexManifest = join(TEMPLATES_DIR, "..", ".codex-plugin", "plugin.json");
+  const claudeManifest = join(TEMPLATES_DIR, "..", ".claude-plugin", "plugin.json");
+  const nativeSkillsDir = join(TEMPLATES_DIR, "native-skills");
+
+  if (existsSync(codexManifest)) {
+    mkdirSync(join(rootDir, ".codex-plugin"), { recursive: true });
+    copyFileSync(codexManifest, join(rootDir, ".codex-plugin", "plugin.json"));
+  }
+  if (existsSync(claudeManifest)) {
+    mkdirSync(join(rootDir, ".claude-plugin"), { recursive: true });
+    copyFileSync(claudeManifest, join(rootDir, ".claude-plugin", "plugin.json"));
+  }
+  if (existsSync(nativeSkillsDir)) {
+    for (const skill of readdirSync(nativeSkillsDir, { withFileTypes: true })) {
+      if (skill.isDirectory()) {
+        copyDirFiles(join(nativeSkillsDir, skill.name), join(rootDir, "skills", skill.name));
+      }
+    }
+  }
 }
 
 function makeSummary(report, environment) {
@@ -80,6 +117,7 @@ export function writeStwFiles(rootDir, environment, conflicts) {
   writeFileSync(join(reportsDir, ".gitkeep"), "");
 
   const now = new Date().toISOString().slice(0, 10);
+  writeNativePluginFiles(rootDir);
 
   // Config
   const config = createDefaultConfig();
@@ -125,6 +163,8 @@ export function writeStwFiles(rootDir, environment, conflicts) {
         "",
         "## 求是工作流",
         "",
+        "开发类任务必须先使用原生 Skill `using-stw`。",
+        "若 Skill 未自动触发，先运行 `rtk stw status`；无任务则 `rtk stw start --desc \"<用户需求>\"`。",
         "读取 `.stw/STW-Workspace.md`，严格按照五阶段规范执行所有任务。",
         "对话中使用 `/stw status` 查看进度，`/stw next` 推进阶段。",
         "",
@@ -138,8 +178,10 @@ export function writeStwFiles(rootDir, environment, conflicts) {
         "",
         "## 求是工作流",
         "",
+        "开发类任务必须先使用原生 Skill `using-stw`。",
+        "若 Skill 未自动触发，先运行 `rtk stw status`；无任务则 `rtk stw start --desc \"<用户需求>\"`。",
         "读取 `.stw/STW-Workspace.md`，严格按照五阶段规范执行所有任务。",
-        "在终端中运行 `stw status` 查看进度，`stw next` 推进阶段。",
+        "在终端中运行 `rtk stw status` 查看进度，`rtk stw next` 推进阶段。",
         "",
       ],
     },
@@ -148,8 +190,10 @@ export function writeStwFiles(rootDir, environment, conflicts) {
       content: [
         "<!-- STW 工作流规范（由 stw init 自动生成） -->",
         "",
+        "开发类任务必须先使用原生 Skill `using-stw`。",
+        "若 Skill 未自动触发，先运行 `rtk stw status`；无任务则 `rtk stw start --desc \"<用户需求>\"`。",
         "读取 `.stw/STW-Workspace.md`，严格按照五阶段规范执行所有任务。",
-        "在终端中运行 `stw status` 查看进度，`stw next` 推进阶段。",
+        "在终端中运行 `rtk stw status` 查看进度，`rtk stw next` 推进阶段。",
         "",
       ],
     },
@@ -158,8 +202,10 @@ export function writeStwFiles(rootDir, environment, conflicts) {
       content: [
         "<!-- STW 工作流规范（由 stw init 自动生成） -->",
         "",
+        "开发类任务必须先使用原生 Skill `using-stw`。",
+        "若 Skill 未自动触发，先运行 `rtk stw status`；无任务则 `rtk stw start --desc \"<用户需求>\"`。",
         "读取 `.stw/STW-Workspace.md`，严格按照五阶段规范执行所有任务。",
-        "在终端中运行 `stw status` 查看进度，`stw next` 推进阶段。",
+        "在终端中运行 `rtk stw status` 查看进度，`rtk stw next` 推进阶段。",
         "",
       ],
     },
@@ -168,8 +214,10 @@ export function writeStwFiles(rootDir, environment, conflicts) {
       content: [
         "<!-- STW 工作流规范（由 stw init 自动生成） -->",
         "",
+        "开发类任务必须先使用原生 Skill `using-stw`。",
+        "若 Skill 未自动触发，先运行 `rtk stw status`；无任务则 `rtk stw start --desc \"<用户需求>\"`。",
         "读取 `.stw/STW-Workspace.md`，严格按照五阶段规范执行所有任务。",
-        "在终端中运行 `stw status` 查看进度，`stw next` 推进阶段。",
+        "在终端中运行 `rtk stw status` 查看进度，`rtk stw next` 推进阶段。",
         "",
       ],
     },
@@ -178,8 +226,10 @@ export function writeStwFiles(rootDir, environment, conflicts) {
       content: [
         "<!-- STW 工作流规范（由 stw init 自动生成） -->",
         "",
+        "开发类任务必须先使用原生 Skill `using-stw`。",
+        "若 Skill 未自动触发，先运行 `rtk stw status`；无任务则 `rtk stw start --desc \"<用户需求>\"`。",
         "读取 `.stw/STW-Workspace.md`，严格按照五阶段规范执行所有任务。",
-        "在终端中运行 `stw status` 查看进度，`stw next` 推进阶段。",
+        "在终端中运行 `rtk stw status` 查看进度，`rtk stw next` 推进阶段。",
         "",
       ],
     },
@@ -188,8 +238,10 @@ export function writeStwFiles(rootDir, environment, conflicts) {
       content: [
         "<!-- STW 工作流规范（由 stw init 自动生成） -->",
         "",
+        "开发类任务必须先使用原生 Skill `using-stw`。",
+        "若 Skill 未自动触发，先运行 `rtk stw status`；无任务则 `rtk stw start --desc \"<用户需求>\"`。",
         "读取 `.stw/STW-Workspace.md`，严格按照五阶段规范执行所有任务。",
-        "在终端中运行 `stw status` 查看进度，`stw next` 推进阶段。",
+        "在终端中运行 `rtk stw status` 查看进度，`rtk stw next` 推进阶段。",
         "",
       ],
     },
@@ -198,8 +250,10 @@ export function writeStwFiles(rootDir, environment, conflicts) {
       content: [
         "<!-- STW 工作流规范（由 stw init 自动生成） -->",
         "",
+        "开发类任务必须先使用原生 Skill `using-stw`。",
+        "若 Skill 未自动触发，先运行 `rtk stw status`；无任务则 `rtk stw start --desc \"<用户需求>\"`。",
         "读取 `.stw/STW-Workspace.md`，严格按照五阶段规范执行所有任务。",
-        "在终端中运行 `stw status` 查看进度，`stw next` 推进阶段。",
+        "在终端中运行 `rtk stw status` 查看进度，`rtk stw next` 推进阶段。",
         "",
       ],
     },

@@ -1,0 +1,16 @@
+{
+  "name": "seektruth-workflow",
+  "version": "0.3.4",
+  "description": "Native skills for enforcing the SeekTruth five-stage workflow in AI coding agents.",
+  "homepage": "https://github.com/Qinglianzihan/seektruth-workflow",
+  "repository": "https://github.com/Qinglianzihan/seektruth-workflow",
+  "license": "MIT",
+  "keywords": ["workflow", "coding-agent", "skills", "verification", "seektruth"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "SeekTruth Workflow",
+    "shortDescription": "Five-stage disciplined workflow for AI coding agents",
+    "category": "Coding",
+    "capabilities": ["Read", "Write", "Interactive"]
+  }
+}

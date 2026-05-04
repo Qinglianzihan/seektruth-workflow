@@ -51,8 +51,8 @@ stw next                            # 按流程推进，AI 完成每阶段交付
 
 | 工具 | 自动注入方式 | 命令执行方式 |
 |:---|:---|:---|
-| **Claude Code** | `CLAUDE.md` + `.claude/skills/stw.md` | 对话中 `/stw` 命令 |
-| **Codex CLI** | `AGENTS.md` | 终端 `stw next` |
+| **Claude Code** | `.claude-plugin` + `skills/` + `CLAUDE.md` + `.claude/skills/stw.md` | 原生 Skill `using-stw` + `/stw` 命令 |
+| **Codex CLI** | `.codex-plugin` + `skills/` + `AGENTS.md` | 原生 Skill `using-stw` + 终端 `rtk stw next` |
 | **Cursor** | `.cursorrules` | 终端 `stw next` |
 | **Cline** | `.clinerules` | 终端 `stw next` |
 | **OpenCode** | `OPenCODE.md` | 终端 `stw next` |
@@ -60,6 +60,25 @@ stw next                            # 按流程推进，AI 完成每阶段交付
 | **GitHub Copilot** | `.github/copilot-instructions.md` | 终端 `stw next` |
 | **Aider** | `.aiderrules` | 终端 `stw next` |
 
+### 原生 Skill / Plugin 模式
+
+`stw init` 会生成：
+
+```text
+.codex-plugin/plugin.json
+.claude-plugin/plugin.json
+skills/using-stw/SKILL.md
+skills/stw-*/SKILL.md
+```
+
+Codex 可将 `skills/` 链接到原生发现目录：
+
+```powershell
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.agents\skills"
+cmd /c mklink /J "%USERPROFILE%\.agents\skills\stw" "<项目路径>\skills"
+```
+
+重启 Codex 后，开发类任务会触发 `using-stw`，先执行 `rtk stw status/start`，再按阶段调用对应 Skill。
 ### 通用流程
 
 ```bash
@@ -72,6 +91,26 @@ stw start --desc "任务描述"
 ```
 
 **核心不变**：AI 负责执行，`stw next` 负责把关。门禁不通过，AI 继续改。
+
+### 需求炼金炉
+
+在 Codex / Claude CLI 里可以直接说：
+
+> 我想做 AI狼人杀，先用 STW 需求炼金炉讨论，不要直接开发。
+
+等价命令：
+
+```powershell
+stw forge "AI狼人杀"
+stw forge run          # 默认调用当前 Codex CLI；Claude 用 --provider claude
+stw forge next         # 生成 .stw/forge/questions.md
+stw forge accept "用户确认后的方向和范围"
+stw status             # 已进入 STW 阶段 1
+```
+
+`forge` 采用“主持人状态机 + 多专家独立产出”，生成 `.stw/forge/session.json`、agent 状态文件、讨论黑板、确认问题和 `.stw/forge/requirements.md`。`forge accept` 会把需求固化并启动五阶段工作流，不再停在讨论层。
+
+如需外部 API，使用 `stw forge run --provider api`，再设置 `STW_LLM_API_KEY`、`STW_LLM_BASE_URL`、`STW_LLM_MODEL`。
 
 ### Claude Code（对话中操作）
 
@@ -134,6 +173,7 @@ flowchart TD
 ## 命令
 
 ```bash
+stw forge "AI狼人杀"       # 需求炼金炉：多 agent 讨论需求
 stw init                   # 初始化项目
 stw init --deep            # 初始化 + 深度扫描 MCP 工具
 stw start --desc "..."     # 开始任务（保存描述，中途可对照检查）
@@ -170,3 +210,5 @@ stw repair                 # 修复/重生成 .stw 文件
 <p align="center"><em>"读书是学习，使用也是学习，而且是更重要的学习。"</em></p>
 
 <p align="center">MIT · v0.3.0 · 164 tests · <a href="https://github.com/Qinglianzihan/seektruth-workflow">GitHub</a></p>
+
+

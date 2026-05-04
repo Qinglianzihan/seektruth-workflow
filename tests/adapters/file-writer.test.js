@@ -185,6 +185,34 @@ describe("File Writer — Claude Code integration", () => {
     assert.ok(readFileSync(path, "utf-8").includes("STW 工作流规范"));
   });
 
+
+  it("creates native Codex plugin manifest and STW skills", () => {
+    const dir = freshDir();
+    const env = { project: null, aiTools: [{ name: "Codex CLI", source: "test" }], mcpConfigs: [], skills: [] };
+    writeStwFiles(dir, env, EMPTY_CONFLICTS);
+
+    const manifestPath = join(dir, ".codex-plugin", "plugin.json");
+    assert.ok(existsSync(manifestPath), "should create Codex plugin manifest");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
+    assert.equal(manifest.skills, "./skills/");
+
+    for (const skill of ["using-stw", "stw-investigation", "stw-focus", "stw-lockdown", "stw-verification", "stw-summary"]) {
+      const skillPath = join(dir, "skills", skill, "SKILL.md");
+      assert.ok(existsSync(skillPath), `missing native skill: ${skill}`);
+      const content = readFileSync(skillPath, "utf-8");
+      assert.ok(content.startsWith("---\nname: "), `invalid frontmatter: ${skill}`);
+      assert.ok(content.includes("description: Use when"), `missing trigger description: ${skill}`);
+    }
+  });
+
+  it("creates Claude plugin manifest for native skill discovery", () => {
+    const dir = freshDir();
+    writeStwFiles(dir, claudeEnv, EMPTY_CONFLICTS);
+    const manifestPath = join(dir, ".claude-plugin", "plugin.json");
+    assert.ok(existsSync(manifestPath), "should create Claude plugin manifest");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
+    assert.equal(manifest.name, "seektruth-workflow");
+  });
   it("creates .cursorrules when Cursor detected", () => {
     const dir = freshDir();
     const env = { project: null, aiTools: [{ name: "Cursor", source: "test" }], mcpConfigs: [], skills: [] };

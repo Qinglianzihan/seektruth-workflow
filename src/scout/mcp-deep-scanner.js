@@ -25,7 +25,7 @@ function commandExists(cmd) {
   return result.status === 0;
 }
 
-function collectServerDefs(rootDir) {
+function collectServerDefs(rootDir, options = {}) {
   const defs = [];
 
   const addDefs = (source, config) => {
@@ -41,26 +41,28 @@ function collectServerDefs(rootDir) {
     if (cfg) addDefs(`${f} (project)`, cfg);
   }
 
-  // Global Claude settings
-  for (const [label, fp] of [
-    [".claude/settings.json (global)", CLAUDE_SETTINGS],
-    [".claude/settings.local.json (global)", CLAUDE_SETTINGS_LOCAL],
-  ]) {
-    const cfg = tryReadJson(fp);
-    if (cfg) addDefs(label, cfg);
-  }
+  if (options.includeGlobal !== false) {
+    // Global Claude settings
+    for (const [label, fp] of [
+      [".claude/settings.json (global)", CLAUDE_SETTINGS],
+      [".claude/settings.local.json (global)", CLAUDE_SETTINGS_LOCAL],
+    ]) {
+      const cfg = tryReadJson(fp);
+      if (cfg) addDefs(label, cfg);
+    }
 
-  // Plugin marketplace — include all available servers (users may use them)
-  if (existsSync(PLUGIN_MARKETPLACE)) {
-    const marketplaces = readdirSync(PLUGIN_MARKETPLACE, { withFileTypes: true })
-      .filter((d) => d.isDirectory()).map((d) => d.name);
-    for (const marketplace of marketplaces) {
-      const extDir = join(PLUGIN_MARKETPLACE, marketplace, "external_plugins");
-      if (!existsSync(extDir)) continue;
-      const dirs = readdirSync(extDir, { withFileTypes: true }).filter((d) => d.isDirectory());
-      for (const dir of dirs) {
-        const mcpData = tryReadJson(join(extDir, dir.name, ".mcp.json"));
-        if (mcpData) addDefs(`plugin: ${dir.name}`, mcpData);
+    // Plugin marketplace — include all available servers (users may use them)
+    if (existsSync(PLUGIN_MARKETPLACE)) {
+      const marketplaces = readdirSync(PLUGIN_MARKETPLACE, { withFileTypes: true })
+        .filter((d) => d.isDirectory()).map((d) => d.name);
+      for (const marketplace of marketplaces) {
+        const extDir = join(PLUGIN_MARKETPLACE, marketplace, "external_plugins");
+        if (!existsSync(extDir)) continue;
+        const dirs = readdirSync(extDir, { withFileTypes: true }).filter((d) => d.isDirectory());
+        for (const dir of dirs) {
+          const mcpData = tryReadJson(join(extDir, dir.name, ".mcp.json"));
+          if (mcpData) addDefs(`plugin: ${dir.name}`, mcpData);
+        }
       }
     }
   }
@@ -108,8 +110,8 @@ async function probeServer(def) {
   }
 }
 
-export async function deepScanMcp(rootDir) {
-  const defs = collectServerDefs(rootDir);
+export async function deepScanMcp(rootDir, options = {}) {
+  const defs = collectServerDefs(rootDir, options);
   if (defs.length === 0) return { servers: [], summary: "未发现可连接的 MCP 服务器" };
 
   // Limit concurrent probes to avoid spawning too many processes

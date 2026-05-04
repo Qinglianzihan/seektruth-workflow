@@ -6,7 +6,7 @@ import { freshDir, writeFile } from "../test-helper.js";
 describe("MCP Deep Scanner — structure and return types", () => {
   it("returns expected shape { servers, summary }", async () => {
     const dir = freshDir();
-    const result = await deepScanMcp(dir);
+    const result = await deepScanMcp(dir, { includeGlobal: false });
     assert.ok("servers" in result);
     assert.ok("summary" in result);
     assert.ok(Array.isArray(result.servers));
@@ -15,7 +15,7 @@ describe("MCP Deep Scanner — structure and return types", () => {
 
   it("calls servers entries 'servers' not undefined", async () => {
     const dir = freshDir();
-    const result = await deepScanMcp(dir);
+    const result = await deepScanMcp(dir, { includeGlobal: false });
     for (const s of result.servers) {
       assert.ok("name" in s);
       assert.ok("status" in s);
@@ -35,7 +35,7 @@ describe("MCP Deep Scanner — project-level config", () => {
         },
       },
     }));
-    const result = await deepScanMcp(dir);
+    const result = await deepScanMcp(dir, { includeGlobal: false });
     // At least one server was collected from the project config
     const fromProject = result.servers.filter((s) =>
       s.name === "fake-server" && s.source?.includes(".mcp.json"),
@@ -57,7 +57,7 @@ describe("MCP Deep Scanner — project-level config", () => {
         },
       },
     }));
-    const result = await deepScanMcp(dir);
+    const result = await deepScanMcp(dir, { includeGlobal: false });
     const fromSettings = result.servers.filter((s) =>
       s.name === "another-fake",
     );
@@ -69,7 +69,7 @@ describe("MCP Deep Scanner — project-level config", () => {
 
   it("empty project folder returns valid summary string", async () => {
     const dir = freshDir();
-    const result = await deepScanMcp(dir);
+    const result = await deepScanMcp(dir, { includeGlobal: false });
     // Summary is always a non-empty string
     assert.ok(result.summary.length > 0);
   });
