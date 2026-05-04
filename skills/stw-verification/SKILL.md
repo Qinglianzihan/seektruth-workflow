@@ -5,6 +5,23 @@ description: Use when STW is in Phase 4, before claiming a fix or feature is com
 
 # STW Phase 4: Verification
 
+## Command Prefix
+
+Choose the STW command prefix once per session:
+
+1. Check whether `rtk` is available.
+2. If available, prefer `rtk stw ...` to save tokens.
+3. Otherwise use `stw ...`.
+4. Do not assume `rtk` exists.
+
+PowerShell check:
+
+```powershell
+Get-Command rtk -ErrorAction SilentlyContinue
+```
+
+Examples below use `stw ...`; replace with `rtk stw ...` when `rtk` is available.
+
 Goal: prove the result with commands, not confidence.
 
 ## Required Actions
@@ -14,7 +31,7 @@ Goal: prove the result with commands, not confidence.
 3. Check changed files against ATTACK_ZONE and change plan:
 
 ```powershell
-rtk stw next
+stw next
 ```
 
 4. If `stw next` fails, fix only the reported issue.

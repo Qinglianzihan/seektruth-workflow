@@ -5,11 +5,28 @@ description: Use when starting any coding task, changing files, debugging, plann
 
 # Using STW
 
+## Command Prefix
+
+Choose the STW command prefix once per session:
+
+1. Check whether `rtk` is available.
+2. If available, prefer `rtk stw ...` to save tokens.
+3. Otherwise use `stw ...`.
+4. Do not assume `rtk` exists.
+
+PowerShell check:
+
+```powershell
+Get-Command rtk -ErrorAction SilentlyContinue
+```
+
+Examples below use `stw ...`; replace with `rtk stw ...` when `rtk` is available.
+
 STW is mandatory session control, not optional advice.
 
 ## Idea Gate
 
-If the user request is a vague product/app/game idea rather than a concrete implementation task, use `stw-requirement-forge` first. Do not run `stw start --desc` directly for fuzzy ideas. The forge must end with `rtk stw forge accept "<answers>"`, which starts normal STW Phase 1.
+If the user request is a vague product/app/game idea rather than a concrete implementation task, use `stw-requirement-forge` first. Do not run `stw start --desc` directly for fuzzy ideas. The forge must end with `stw forge accept "<answers>"`, which starts normal STW Phase 1.
 
 Examples: “我想做 AI狼人杀”, “先帮我讨论需求”, “需求炼金炉”, “brainstorm MVP”.
 
@@ -18,17 +35,16 @@ Examples: “我想做 AI狼人杀”, “先帮我讨论需求”, “需求炼
 Before planning, editing, testing, or answering implementation details:
 
 ```powershell
-rtk stw status
+stw status
 ```
 
 If there is no active task:
 
 ```powershell
-rtk stw start --desc "<user original request>"
-rtk stw status
+stw start --desc "<user original request>"
+stw status
 ```
 
-If `rtk` is unavailable, run `stw ...` directly.
 
 ## Phase Routing
 
@@ -41,7 +57,7 @@ If `rtk` is unavailable, run `stw ...` directly.
 ## Hard Rules
 
 - Do not edit production files before Phase 3.
-- Do not move phases mentally; run `rtk stw next`.
+- Do not move phases mentally; run `stw next`.
 - If `stw next` fails, fix the required deliverable only.
 - Never claim completion before Phase 4 passes.
 - Keep user-facing output brief; let CLI gates provide detail.

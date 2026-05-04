@@ -5,6 +5,23 @@ description: Use when STW is in Phase 1, before code changes, when requirements,
 
 # STW Phase 1: Investigation
 
+## Command Prefix
+
+Choose the STW command prefix once per session:
+
+1. Check whether `rtk` is available.
+2. If available, prefer `rtk stw ...` to save tokens.
+3. Otherwise use `stw ...`.
+4. Do not assume `rtk` exists.
+
+PowerShell check:
+
+```powershell
+Get-Command rtk -ErrorAction SilentlyContinue
+```
+
+Examples below use `stw ...`; replace with `rtk stw ...` when `rtk` is available.
+
 Goal: produce evidence before opinions.
 
 ## Required Actions
@@ -22,7 +39,7 @@ Goal: produce evidence before opinions.
 5. Run:
 
 ```powershell
-rtk stw next
+stw next
 ```
 
 If blocked, add missing evidence; do not code.

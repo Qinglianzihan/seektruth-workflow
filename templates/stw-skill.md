@@ -11,20 +11,21 @@ description: Use when managing SeekTruth Workflow commands in Claude Code conver
 
 ## 子命令映射
 
-当用户输入以下命令时，使用 Bash 工具执行对应的 `rtk stw` CLI 命令；若 `rtk` 不可用则执行 `stw`：
+当用户输入以下命令时，先检测 `rtk`：可用则执行 `rtk stw ...`，不可用则执行 `stw ...`。
 
 | 用户输入 | 执行命令 |
 |:---|:---|
-| `/stw status` | `rtk stw status` |
-| `/stw next` | `rtk stw next` |
-| `/stw rollback <原因>` | `rtk stw rollback <原因>` |
-| `/stw abort` | `rtk stw abort` |
-| `/stw report` | `rtk stw report` |
-| `/stw stats` | `rtk stw stats` |
+| `/stw status` | `rtk stw status` 或 `stw status` |
+| `/stw next` | `rtk stw next` 或 `stw next` |
+| `/stw rollback <原因>` | `rtk stw rollback <原因>` 或 `stw rollback <原因>` |
+| `/stw abort` | `rtk stw abort` 或 `stw abort` |
+| `/stw report` | `rtk stw report` 或 `stw report` |
+| `/stw stats` | `rtk stw stats` 或 `stw stats` |
 
 ## 规则
 
 - 直接用 Bash 执行，不要额外解释命令本身
+- 优先检测 `rtk`，但不要把 `rtk` 当成硬依赖
 - 将命令输出原样展示给用户
 - 如果 `stw next` 返回错误（交付物未完成/门禁不通过），将错误信息清晰展示，帮助用户理解需要做什么
 - 不要自行修改 `.stw/` 目录下的文件，那是 CLI 的职责

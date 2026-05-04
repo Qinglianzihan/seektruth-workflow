@@ -182,7 +182,11 @@ describe("File Writer — Claude Code integration", () => {
     writeStwFiles(dir, env, EMPTY_CONFLICTS);
     const path = join(dir, "AGENTS.md");
     assert.ok(existsSync(path));
-    assert.ok(readFileSync(path, "utf-8").includes("STW 工作流规范"));
+    const content = readFileSync(path, "utf-8");
+    assert.ok(content.includes("STW 工作流规范"));
+    assert.ok(content.includes("`rtk stw status`"));
+    assert.ok(content.includes("否则运行 `stw status`"));
+    assert.ok(content.includes("若 rtk 可用"));
   });
 
 

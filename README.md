@@ -52,13 +52,13 @@ stw next                            # 按流程推进，AI 完成每阶段交付
 | 工具 | 自动注入方式 | 命令执行方式 |
 |:---|:---|:---|
 | **Claude Code** | `.claude-plugin` + `skills/` + `CLAUDE.md` + `.claude/skills/stw.md` | 原生 Skill `using-stw` + `/stw` 命令 |
-| **Codex CLI** | `.codex-plugin` + `skills/` + `AGENTS.md` | 原生 Skill `using-stw` + 终端 `rtk stw next` |
-| **Cursor** | `.cursorrules` | 终端 `stw next` |
-| **Cline** | `.clinerules` | 终端 `stw next` |
-| **OpenCode** | `OPenCODE.md` | 终端 `stw next` |
-| **Windsurf** | `.windsurfrules` | 终端 `stw next` |
-| **GitHub Copilot** | `.github/copilot-instructions.md` | 终端 `stw next` |
-| **Aider** | `.aiderrules` | 终端 `stw next` |
+| **Codex CLI** | `.codex-plugin` + `skills/` + `AGENTS.md` | 原生 Skill `using-stw` + 终端 `rtk stw` 优先，`stw` 兜底 |
+| **Cursor** | `.cursorrules` | 终端 `rtk stw` 优先，`stw` 兜底 |
+| **Cline** | `.clinerules` | 终端 `rtk stw` 优先，`stw` 兜底 |
+| **OpenCode** | `OPenCODE.md` | 终端 `rtk stw` 优先，`stw` 兜底 |
+| **Windsurf** | `.windsurfrules` | 终端 `rtk stw` 优先，`stw` 兜底 |
+| **GitHub Copilot** | `.github/copilot-instructions.md` | 终端 `rtk stw` 优先，`stw` 兜底 |
+| **Aider** | `.aiderrules` | 终端 `rtk stw` 优先，`stw` 兜底 |
 
 ### 原生 Skill / Plugin 模式
 
@@ -78,7 +78,10 @@ New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.agents\skills"
 cmd /c mklink /J "%USERPROFILE%\.agents\skills\stw" "<项目路径>\skills"
 ```
 
-重启 Codex 后，开发类任务会触发 `using-stw`，先执行 `rtk stw status/start`，再按阶段调用对应 Skill。
+重启 Codex 后，开发类任务会触发 `using-stw`：若检测到 `rtk`，优先执行 `rtk stw status/start`；否则执行 `stw status/start`，再按阶段调用对应 Skill。
+
+`rtk` 是可选加速层，不是 STW 依赖。
+
 ### 通用流程
 
 ```bash
@@ -209,4 +212,4 @@ stw repair                 # 修复/重生成 .stw 文件
 
 <p align="center"><em>"读书是学习，使用也是学习，而且是更重要的学习。"</em></p>
 
-<p align="center">MIT · v0.3.5 · 180 tests · <a href="https://github.com/Qinglianzihan/seektruth-workflow">GitHub</a></p>
+<p align="center">MIT · v0.3.6 · 180 tests · <a href="https://github.com/Qinglianzihan/seektruth-workflow">GitHub</a></p>

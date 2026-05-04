@@ -5,17 +5,34 @@ description: Use when a user gives a vague product/app/game idea, says “I want
 
 # STW Requirement Forge
 
+## Command Prefix
+
+Choose the STW command prefix once per session:
+
+1. Check whether `rtk` is available.
+2. If available, prefer `rtk stw ...` to save tokens.
+3. Otherwise use `stw ...`.
+4. Do not assume `rtk` exists.
+
+PowerShell check:
+
+```powershell
+Get-Command rtk -ErrorAction SilentlyContinue
+```
+
+Examples below use `stw ...`; replace with `rtk stw ...` when `rtk` is available.
+
 Use the forge before coding when the request is still an idea, not a spec.
 
 ## Start
 
 ```powershell
-rtk stw forge "<user idea>"
-rtk stw forge run
-rtk stw forge next
+stw forge "<user idea>"
+stw forge run
+stw forge next
 # ask the user the questions in .stw/forge/questions.md
-rtk stw forge accept "<user confirmed answers/scope>"
-rtk stw status
+stw forge accept "<user confirmed answers/scope>"
+stw status
 ```
 
 ## Control Pattern
@@ -23,20 +40,20 @@ rtk stw status
 Do not create a free-form group chat. Use host-controlled independent agents:
 
 1. Start the forge session.
-2. Run agents with `rtk stw forge run` or `rtk stw forge run --only architect,qa`.
-3. Inspect progress with `rtk stw forge status` and `rtk stw forge inspect <agent>`.
-4. Advance only through `rtk stw forge next`.
+2. Run agents with `stw forge run` or `stw forge run --only architect,qa`.
+3. Inspect progress with `stw forge status` and `stw forge inspect <agent>`.
+4. Advance only through `stw forge next`.
 5. Ask the user only the consolidated questions in `.stw/forge/questions.md`.
-6. After the user answers, run `rtk stw forge accept "<answers>"`; this writes `.stw/forge/requirements.md` and starts normal STW Phase 1.
+6. After the user answers, run `stw forge accept "<answers>"`; this writes `.stw/forge/requirements.md` and starts normal STW Phase 1.
 
 ## Model Config
 
 Default `stw forge run` calls the current Codex CLI model via `codex exec`. Claude Code is supported with `--provider claude` via `claude --print`. Use API fallback only when needed:
 
 ```powershell
-rtk stw forge run --provider codex
-rtk stw forge run --provider api
-rtk stw forge run --model gpt-5.4
+stw forge run --provider codex
+stw forge run --provider api
+stw forge run --model gpt-5.4
 ```
 
 API fallback uses an OpenAI-compatible Chat Completions endpoint:
@@ -65,7 +82,7 @@ Invalid schema means retry once, then discard.
 
 ## Rule
 
-The forge output becomes `.stw/forge/questions.md` first. After user confirmation, `forge accept` must create `.stw/forge/requirements.md` and start the normal five-stage STW workflow. Do not implement before `rtk stw status` shows Phase 1 active.
+The forge output becomes `.stw/forge/questions.md` first. After user confirmation, `forge accept` must create `.stw/forge/requirements.md` and start the normal five-stage STW workflow. Do not implement before `stw status` shows Phase 1 active.
 
 ## Natural Language Triggers
 

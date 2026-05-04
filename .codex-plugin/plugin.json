@@ -1,6 +1,6 @@
 {
   "name": "seektruth-workflow",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "description": "Native skills for enforcing the SeekTruth five-stage workflow in AI coding agents.",
   "homepage": "https://github.com/Qinglianzihan/seektruth-workflow",
   "repository": "https://github.com/Qinglianzihan/seektruth-workflow",
