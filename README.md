@@ -20,36 +20,36 @@
 
 ## 快速安装
 
-不想手动配置，就把这段话直接复制给 Codex / Claude Code：
+不想手动配置，按你的需求复制其中一个提示词给 Codex / Claude Code：
+
+**A. 只安装求是工作流**
 
 ```text
 请使用这个开源项目配置求是工作流：
 https://github.com/Qinglianzihan/seektruth-workflow
 
-目标：在当前项目里安装/更新 STW，运行 stw init，选择当前 AI 工具，并告诉我以后如何用自然语言启动。
+目标：只安装/更新 seektruth-workflow，在当前项目里运行 stw init，选择当前 AI 工具，并告诉我以后如何用自然语言启动。
+```
+
+**B. 安装 RTK + 求是工作流**
+
+```text
+请同时使用这两个开源项目配置 RTK 和求是工作流：
+
+RTK：
+https://github.com/rtk-ai/rtk
+用途：RTK 是更省 token 的 AI 编程命令层，可用 rtk stw ... 调用求是工作流。
+
+求是工作流：
+https://github.com/Qinglianzihan/seektruth-workflow
+
+目标：安装/更新 RTK 和 seektruth-workflow，在当前项目里运行 stw init，选择当前 AI 工具。配置完成后，优先使用 rtk stw ...，并告诉我以后如何用自然语言启动。
 ```
 
 AI 会完成：安装 CLI、初始化 `.stw/`、注入 Claude Code / Codex 需要的规则和 skills。之后你只要说：
 
 ```text
 启动求是工作流，帮我处理：XXX
-```
-
-### 两种安装提示词
-
-**A. 只安装求是工作流**
-
-```text
-请使用 https://github.com/Qinglianzihan/seektruth-workflow 配置求是工作流。
-只安装 seektruth-workflow，进入当前项目运行 stw init，选择当前 AI 工具。完成后告诉我如何用自然语言启动。
-```
-
-**B. 求是工作流 + rtk（可选，省 token）**
-
-```text
-请使用 https://github.com/Qinglianzihan/seektruth-workflow 配置求是工作流。
-同时检查是否安装了 rtk；如果没有，请解释 rtk 是可选的 token 节省/命令加速层，并询问我是否一起安装。
-配置完成后，优先用 rtk stw ...，没有 rtk 就直接用 stw ...。
 ```
 
 > 项目显示名叫「求是工作流」；npm 包名和命令名保持小写：`seektruth-workflow`、`stw`。
