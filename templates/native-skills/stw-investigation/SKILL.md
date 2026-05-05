@@ -5,47 +5,13 @@ description: Use when STW is in Phase 1, before code changes, when requirements,
 
 # STW Phase 1: Investigation
 
-## Command Prefix
+Thin trigger only. The current workflow rules live in `.stw/STW-Workspace.md`, `.stw/Analysis-Template.md`, and CLI gates.
 
-Choose the STW command prefix once per session:
-
-1. Check whether `rtk` is available.
-2. If available, prefer `rtk stw ...` to save tokens.
-3. Otherwise use `stw ...`.
-4. Do not assume `rtk` exists.
-
-PowerShell check:
-
-```powershell
-Get-Command rtk -ErrorAction SilentlyContinue
-```
-
-Examples below use `stw ...`; replace with `rtk stw ...` when `rtk` is available.
-
-Goal: produce evidence before opinions.
-
-## Required Actions
+## Use
 
 1. Read `.stw/STW-Workspace.md` and `.stw/Analysis-Template.md`.
-2. Inspect only relevant docs/code; use semantic code search first when available.
-3. Capture complete definitions/signatures for touched symbols.
-4. Fill `.stw/Analysis-Template.md` with:
-   - user requirement
-   - current behavior
-   - relevant files/symbols with `(file:line)` citations
-   - risks and constraints
-   - change plan table
-   - files intentionally not touched
-5. Run:
+2. Gather only evidence needed for the current task; cite files/lines or command output.
+3. Fill the current analysis template, especially scope, risks, and change plan.
+4. Run `stw next` (or `rtk stw next` if available) and fix only the gate's reported gaps.
 
-```powershell
-stw next
-```
-
-If blocked, add missing evidence; do not code.
-
-## Minimum Bar
-
-- At least two source citations.
-- No claims without a file/line or command output.
-- No implementation until Phase 3.
+Do not code in Phase 1.

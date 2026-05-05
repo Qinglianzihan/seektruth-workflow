@@ -5,40 +5,13 @@ description: Use when STW is in Phase 3, when implementation may begin but file 
 
 # STW Phase 3: Lockdown
 
-## Command Prefix
+Thin trigger only. The current workflow rules live in `.stw/STW-Workspace.md`, `.stw/lockdown.json`, and CLI gates.
 
-Choose the STW command prefix once per session:
+## Use
 
-1. Check whether `rtk` is available.
-2. If available, prefer `rtk stw ...` to save tokens.
-3. Otherwise use `stw ...`.
-4. Do not assume `rtk` exists.
+1. Run `stw next` (or `rtk stw next` if available) to generate/verify lockdown.
+2. Edit only files allowed by current `ATTACK_ZONE` and the Phase 1 change plan.
+3. Keep diffs minimal and follow existing project style.
+4. Record the smallest relevant verification command/result for Phase 4.
 
-PowerShell check:
-
-```powershell
-Get-Command rtk -ErrorAction SilentlyContinue
-```
-
-Examples below use `stw ...`; replace with `rtk stw ...` when `rtk` is available.
-
-Goal: implement only inside the declared battlefield.
-
-## Required Actions
-
-1. Generate or verify lockdown:
-
-```powershell
-stw next
-```
-
-2. If Phase 3 remains active, create/fix `.stw/lockdown.json` using declared ATTACK_ZONE.
-3. Edit only files covered by ATTACK_ZONE and Phase 1 change plan.
-4. Prefer minimal diffs and existing project style.
-5. After implementation, run the smallest relevant test command and record results for Phase 4.
-
-## Stop Conditions
-
-- Need to edit outside ATTACK_ZONE → stop, return to Phase 2/1.
-- Need new dependency → stop, update investigation and change plan first.
-- Test fails for unknown reason → investigate before changing more files.
+If work needs files outside scope, stop and return to the proper STW phase.

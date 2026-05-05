@@ -32,6 +32,9 @@ npm update -g seektruth-workflow
 
 要求 Node.js ≥ 18。
 
+> `npm install` 只安装 `stw` CLI，不会弹窗或写入你的 AI 工具配置。
+> 进入具体项目后运行 `stw init`，才会检测 Claude/Codex/Cursor 等工具，并让你选择要注入的集成。
+
 ## 一分钟上手
 
 ```bash
@@ -81,6 +84,8 @@ cmd /c mklink /J "%USERPROFILE%\.agents\skills\stw" "<项目路径>\skills"
 重启 Codex 后，开发类任务会触发 `using-stw`：若检测到 `rtk`，优先执行 `rtk stw status/start`；否则执行 `stw status/start`，再按阶段调用对应 Skill。
 
 `rtk` 是可选加速层，不是 STW 依赖；顺手推荐看看这个项目：https://github.com/rtk-ai/rtk
+
+维护 skill 时优先看 `skills/skill-maintenance/SKILL.md`，再同步到 `templates/native-skills/` 和 `skills/`。
 
 ### 通用流程
 
@@ -158,7 +163,7 @@ flowchart TD
     C --> |"越界检查 + 变更计划 + 依赖检测"| D[阶段4 实践检验]
     D --> |"测试通过 + 人工核查"| E[阶段5 总结与转化]
     E -.-> |"经验教训入库"| F((跨会话记忆))
-    
+
     A -..-> |"不通过 → 补充调研"| A
     D -..-> |"不通过 → stw rollback"| A
 ```
