@@ -12,160 +12,120 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/seektruth-workflow"><img src="https://img.shields.io/npm/v/seektruth-workflow?color=c00" alt="npm"></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/seektruth-workflow" alt="node"></a>
-  <img src="https://img.shields.io/badge/tests-164%20pass-brightgreen" alt="tests">
+  <img src="https://img.shields.io/badge/tests-182%20pass-brightgreen" alt="tests">
   <a href="./LICENSE"><img src="https://img.shields.io/npm/l/seektruth-workflow" alt="license MIT"></a>
 </p>
 
 ---
 
-## 超小白启动法（推荐）
+## 快速安装
 
-如果你刚装完电脑，最快是这样：
+不想手动配置，就把这段话直接复制给 Codex / Claude Code：
 
 ```text
-把这个仓库链接发给 AI：
+请使用这个开源项目配置求是工作流：
 https://github.com/Qinglianzihan/seektruth-workflow
 
-再对 AI 说：
-请按这个仓库的 README 帮我配置并启动 STW
+目标：在当前项目里安装/更新 STW，运行 stw init，选择当前 AI 工具，并告诉我以后如何用自然语言启动。
 ```
 
-AI 会帮你做：
-
-1. 拉仓库 / 安装 CLI
-2. 运行 `stw init`
-3. 注入 Claude Code / Codex 的 skills
-4. 之后你只要说：`启动 STW 工作流，帮我处理 XXX`
-
-也可以直接复制这句话给 Codex / Claude Code：
+AI 会完成：安装 CLI、初始化 `.stw/`、注入 Claude Code / Codex 需要的规则和 skills。之后你只要说：
 
 ```text
-请使用这个开源项目配置 STW：https://github.com/Qinglianzihan/seektruth-workflow
-要求：安装/更新 seektruth-workflow，进入当前项目运行 stw init，选择当前 AI 工具，并把 Claude Code / Codex 的 skills 同步好。完成后告诉我如何用自然语言启动。
+启动求是工作流，帮我处理：XXX
 ```
 
-> 项目显示名就叫「求是工作流」；npm 包名和命令名仍保持小写：`seektruth-workflow`、`stw`。
+### 两种安装提示词
 
-## 自己安装
+**A. 只安装求是工作流**
+
+```text
+请使用 https://github.com/Qinglianzihan/seektruth-workflow 配置求是工作流。
+只安装 seektruth-workflow，进入当前项目运行 stw init，选择当前 AI 工具。完成后告诉我如何用自然语言启动。
+```
+
+**B. 求是工作流 + rtk（可选，省 token）**
+
+```text
+请使用 https://github.com/Qinglianzihan/seektruth-workflow 配置求是工作流。
+同时检查是否安装了 rtk；如果没有，请解释 rtk 是可选的 token 节省/命令加速层，并询问我是否一起安装。
+配置完成后，优先用 rtk stw ...，没有 rtk 就直接用 stw ...。
+```
+
+> 项目显示名叫「求是工作流」；npm 包名和命令名保持小写：`seektruth-workflow`、`stw`。
+
+### 手动安装
+
+要求 Node.js ≥ 18。
 
 ```bash
 npm install -g seektruth-workflow
+cd your-project
+stw init
+stw start --desc "你的任务描述"
 ```
 
-更新到最新版：
+更新：
 
 ```bash
 npm update -g seektruth-workflow
 ```
 
-要求 Node.js ≥ 18。
-
-> `npm install` 只安装 `stw` CLI，不会弹窗或写入你的 AI 工具配置。
-> 进入具体项目后运行 `stw init`，才会检测 Claude/Codex/Cursor 等工具，并让你选择要注入的集成。
-
-## 一分钟上手
-
-```bash
-cd your-project
-stw init                            # 一次性：侦察项目环境，生成 .stw/
-stw start --desc "你的任务描述"      # 开始任务 → 进入阶段 1
-stw next                            # 按流程推进，AI 完成每阶段交付物后执行
-```
-
-每一步 `stw next` 自动检查交付物、置信度、越界修改、变更计划，不通过不推进。
-
-## 在 AI 编程工具中使用
-
-`stw init` 自动检测当前环境中的 AI 工具，为每种工具注入对应的项目配置文件，AI 会话自动加载工作流规范。
-
-### 工具支持一览
-
-| 工具 | 自动注入方式 | 命令执行方式 |
-|:---|:---|:---|
-| **Claude Code** | `.claude-plugin` + `skills/` + `CLAUDE.md` + `.claude/skills/stw.md` | 原生 Skill `using-stw` + `/stw` 命令 |
-| **Codex CLI** | `.codex-plugin` + `skills/` + `AGENTS.md` | 原生 Skill `using-stw` + 终端 `rtk stw` 优先，`stw` 兜底 |
-| **Cursor** | `.cursorrules` | 终端 `rtk stw` 优先，`stw` 兜底 |
-| **Cline** | `.clinerules` | 终端 `rtk stw` 优先，`stw` 兜底 |
-| **OpenCode** | `OPenCODE.md` | 终端 `rtk stw` 优先，`stw` 兜底 |
-| **Windsurf** | `.windsurfrules` | 终端 `rtk stw` 优先，`stw` 兜底 |
-| **GitHub Copilot** | `.github/copilot-instructions.md` | 终端 `rtk stw` 优先，`stw` 兜底 |
-| **Aider** | `.aiderrules` | 终端 `rtk stw` 优先，`stw` 兜底 |
-
-### 原生 Skill / Plugin 模式
-
-`stw init` 会生成：
-
-```text
-.codex-plugin/plugin.json
-.claude-plugin/plugin.json
-skills/using-stw/SKILL.md
-skills/stw-*/SKILL.md
-```
-
-Codex 可将 `skills/` 链接到原生发现目录：
-
-```powershell
-New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.agents\skills"
-cmd /c mklink /J "%USERPROFILE%\.agents\skills\stw" "<项目路径>\skills"
-```
-
-重启 Codex 后，开发类任务会触发 `using-stw`：若检测到 `rtk`，优先执行 `rtk stw status/start`；否则执行 `stw status/start`，再按阶段调用对应 Skill。
-
-`rtk` 是可选加速层，不是 STW 依赖；顺手推荐看看这个项目：https://github.com/rtk-ai/rtk
-
-维护 skill 时优先看 `skills/skill-maintenance/SKILL.md`，再同步到 `templates/native-skills/` 和 `skills/`。
-
-### 通用流程
-
-```bash
-stw init              # 一次性：生成 .stw/ + 自动注入工具配置
-stw start --desc "任务描述"
-
-# → 告诉 AI: "读取 .stw/STW-Workspace.md，按规范完成任务"
-# → AI 填写分析报告、修改代码
-# → 你运行 stw next 把关（Claude Code 用户可直接 /stw next）
-```
-
-**核心不变**：AI 负责执行，`stw next` 负责把关。门禁不通过，AI 继续改。
-
-### 需求炼金炉
-
-在 Codex / Claude CLI 里可以直接说：
-
-> 我想做 AI狼人杀，先用 STW 需求炼金炉讨论，不要直接开发。
-
-等价命令：
-
-```powershell
-stw forge "AI狼人杀"
-stw forge run          # 默认调用当前 Codex CLI；Claude 用 --provider claude
-stw forge next         # 生成 .stw/forge/questions.md
-stw forge accept "用户确认后的方向和范围"
-stw status             # 已进入 STW 阶段 1
-```
-
-`forge` 采用“主持人状态机 + 多专家独立产出”，生成 `.stw/forge/session.json`、agent 状态文件、讨论黑板、确认问题和 `.stw/forge/requirements.md`。`forge accept` 会把需求固化并启动五阶段工作流，不再停在讨论层。
-
-如需外部 API，使用 `stw forge run --provider api`，再设置 `STW_LLM_API_KEY`、`STW_LLM_BASE_URL`、`STW_LLM_MODEL`。
-
-### Claude Code（对话中操作）
-
-```bash
-stw init    # 自动创建 Skill + CLAUDE.md
-```
-
-然后在对话中：
-
-```
-/STW status     ← 直接在对话中推进！
-/STW next       ← 门禁自动检查
-/STW rollback   ← 需求变化回退
-/STW report     ← 归档总结
-```
-
-不需要切回终端，一气呵成。
+`npm install` 只安装 `stw` CLI；`stw init` 才会检测 Claude/Codex/Cursor 等工具，并把工作流配置写入当前项目。
 
 ---
+
+## 日常使用
+
+### 自然语言
+
+```text
+启动求是工作流，帮我修复登录失败的问题。
+```
+
+先讨论需求：
+
+```text
+用求是工作流的需求炼金炉讨论这个想法：AI 狼人杀。
+```
+
+### 常用命令
+
+```bash
+stw status                 # 查看当前阶段
+stw next                   # 推进阶段并运行门禁
+stw rollback <原因>        # 回到阶段 1 重新调查
+stw report                 # 归档总结
+stw repair                 # 重生成 .stw / 工具配置
+```
+
+Claude Code 用户也可以在对话里用：
+
+```text
+/stw status
+/stw next
+/stw report
+```
+
+---
+
+## 支持的 AI 工具
+
+`stw init` 会自动检测工具，并生成对应规则/skills。
+
+| 工具 | 注入方式 |
+|:---|:---|
+| Claude Code | `.claude-plugin` + `CLAUDE.md` + `.claude/skills/stw.md` + 原生 skills |
+| Codex CLI | `.codex-plugin` + `AGENTS.md` + 原生 skills |
+| Cursor / Cline / OpenCode / Windsurf / Copilot / Aider | 对应 rules 文件 |
+
+生成的原生 skills 位于：
+
+```text
+skills/using-stw/SKILL.md
+skills/stw-*/SKILL.md
+skills/skill-maintenance/SKILL.md
+```
 
 ## 解决了什么问题
 
