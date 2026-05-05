@@ -18,7 +18,35 @@
 
 ---
 
-## 快速安装
+## 超小白启动法（推荐）
+
+如果你刚装完电脑，最快是这样：
+
+```text
+把这个仓库链接发给 AI：
+https://github.com/Qinglianzihan/seektruth-workflow
+
+再对 AI 说：
+请按这个仓库的 README 帮我配置并启动 STW
+```
+
+AI 会帮你做：
+
+1. 拉仓库 / 安装 CLI
+2. 运行 `stw init`
+3. 注入 Claude Code / Codex 的 skills
+4. 之后你只要说：`启动 STW 工作流，帮我处理 XXX`
+
+也可以直接复制这句话给 Codex / Claude Code：
+
+```text
+请使用这个开源项目配置 STW：https://github.com/Qinglianzihan/seektruth-workflow
+要求：安装/更新 seektruth-workflow，进入当前项目运行 stw init，选择当前 AI 工具，并把 Claude Code / Codex 的 skills 同步好。完成后告诉我如何用自然语言启动。
+```
+
+> 项目显示名就叫「求是工作流」；npm 包名和命令名仍保持小写：`seektruth-workflow`、`stw`。
+
+## 自己安装
 
 ```bash
 npm install -g seektruth-workflow
@@ -219,4 +247,4 @@ stw repair                 # 修复/重生成 .stw 文件
 
 <p align="center"><em>"读书是学习，使用也是学习，而且是更重要的学习。"</em></p>
 
-<p align="center">MIT · v0.3.6 · 180 tests · <a href="https://github.com/Qinglianzihan/seektruth-workflow">GitHub</a></p>
+<p align="center">MIT · v0.3.8 · 182 tests · <a href="https://github.com/Qinglianzihan/seektruth-workflow">GitHub</a></p>
