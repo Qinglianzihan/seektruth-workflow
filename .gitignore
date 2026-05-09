@@ -22,3 +22,15 @@ Thumbs.db
 
 # Claude Code 本地配置（含 Hook 等敏感信息）
 .claude/settings.local.json
+
+# 开发文档（仅项目内部使用，不公开）
+CLAUDE.md
+HARNESS_ENGINEERING.md
+DEVELOPMENT_PLAN.md
+CONTRIBUTING.md
+
+# 开发资源
+assets/
+
+# 生成的技能文件（源在 templates/native-skills/）
+.claude/skills/
