@@ -101,7 +101,7 @@ function matchesZone(filePath, zones) {
 function getChangedFiles(rootDir) {
   const files = new Set();
 
-  const diffResult = spawnSync("git", ["diff", "--name-only", "HEAD"], {
+  const diffResult = spawnSync("git", ["-c", "core.quotepath=false", "diff", "--name-only", "HEAD"], {
     cwd: rootDir, encoding: "utf-8", timeout: 5000,
   });
   if (diffResult.status === 0 && diffResult.stdout) {
@@ -110,7 +110,7 @@ function getChangedFiles(rootDir) {
     }
   }
 
-  const untrackedResult = spawnSync("git", ["ls-files", "--others", "--exclude-standard"], {
+  const untrackedResult = spawnSync("git", ["-c", "core.quotepath=false", "ls-files", "--others", "--exclude-standard"], {
     cwd: rootDir, encoding: "utf-8", timeout: 5000,
   });
   if (untrackedResult.status === 0 && untrackedResult.stdout) {
@@ -257,7 +257,7 @@ export function checkDepsChange(rootDir) {
  * Returns { dirty, files[], stwResidue: bool }.
  */
 export function checkDirtyTree(rootDir) {
-  const result = spawnSync("git", ["status", "--porcelain"], {
+  const result = spawnSync("git", ["-c", "core.quotepath=false", "status", "--porcelain"], {
     cwd: rootDir, encoding: "utf-8", timeout: 5000,
   });
   if (result.status !== 0) {

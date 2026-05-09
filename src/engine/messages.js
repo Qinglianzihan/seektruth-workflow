@@ -65,3 +65,8 @@ export const CHECK_EXEC_FAILED = (msg) => `执行失败: ${msg}`;
 export const CHECK_ALL_CLEAR = "(无输出 — 全部通过)";
 export const CHECK_ALL_PASSED = "✅ 所有门禁通过";
 export const CHECK_SOME_FAILED = "❌ 部分门禁未通过";
+
+export const RATCHET_ADDED = (id) => `已注册 Ratchet 规则: ${id}`;
+export const RATCHET_REMOVED = (id) => `已移除 Ratchet 规则: ${id}`;
+export const RATCHET_EMPTY = "(无已注册的 Ratchet 规则)";
+export const RATCHET_NOT_FOUND = (id) => `未找到 Ratchet 规则: ${id}`;

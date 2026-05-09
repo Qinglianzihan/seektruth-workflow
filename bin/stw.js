@@ -17,11 +17,12 @@ import { getCurrentPhase, PHASES, startSession, advancePhase, abortSession, roll
 import { generateLockdown, checkDirtyTree } from "../src/engine/lockdown.js";
 import { archiveReport, listReports, getRecentSummaries } from "../src/engine/report.js";
 import { getStats, generateStatsReport, logTokens } from "../src/engine/stats.js";
-import { getRelatedErrors } from "../src/engine/error-registry.js";
+import { getRelatedErrors, getAllErrors } from "../src/engine/error-registry.js";
 import { deepScanMcp } from "../src/scout/mcp-deep-scanner.js";
 import { runCheck, listGates } from "../src/engine/check.js";
+import { ratchetError, getRatchetRules, removeRatchetRule } from "../src/engine/ratchet.js";
 import { injectQuote } from "../src/engine/quote-injector.js";
-import { PHASE_STORIES, ERROR_FRIENDLY, STATUS_EMPTY } from "../src/engine/messages.js";
+import { PHASE_STORIES, ERROR_FRIENDLY, STATUS_EMPTY, RATCHET_ADDED, RATCHET_REMOVED, RATCHET_EMPTY } from "../src/engine/messages.js";
 import { startForge, getForgeStatus, inspectForgeAgent, advanceForge, acceptForge, abortForge, runForgeAgents, AGENTS } from "../src/engine/forge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -45,7 +46,8 @@ const help = () => {
   console.log("  report         存档当前总结报告");
   console.log("  repair         修复/重新生成 .stw 文件");
   console.log("  stats          查看统计报告");
-  console.log("  check          运行所有质量门禁 (lint + test)");
+  console.log("  check          运行所有质量门禁 (lint + ratchet + test)");
+  console.log("  ratchet        管理 Ratchet 规则 (list/add/remove)");
   console.log("  forge          需求炼金炉：多 agent 需求讨论状态机");
 };
 
@@ -660,6 +662,88 @@ const cmdForge = async () => {
   }
 };
 
+const cmdRatchet = () => {
+  const rootDir = process.cwd();
+  const args = process.argv.slice(3);
+  const sub = args[0];
+
+  try {
+    if (!sub || sub === "list") {
+      const rules = getRatchetRules(rootDir);
+      if (rules.length === 0) {
+        console.log(`\n${RATCHET_EMPTY}`);
+        console.log("  使用 stw ratchet add <error-id> 从错误注册表转化规则。");
+        return;
+      }
+      console.log(`\n🔒 Ratchet 规则 (${rules.length}):\n`);
+      for (const r of rules) {
+        console.log(`  ${r.id}`);
+        console.log(`    描述: ${r.description}`);
+        console.log(`    检查类型: ${r.check?.type || "grep"}`);
+        if (r.check?.pattern) console.log(`    模式: ${r.check.pattern}`);
+        console.log(`    创建时间: ${r.createdAt}`);
+        console.log("");
+      }
+      return;
+    }
+
+    if (sub === "add") {
+      const errorId = args[1];
+      if (!errorId) {
+        console.log("用法: stw ratchet add <error-id> [--pattern <grep模式>]");
+        console.log("  从错误注册表中查找对应错误并转化为 Ratchet 规则。");
+        console.log("  提示: 先用 stw status 查看错误列表。");
+        return;
+      }
+      // Look up the error from error-registry
+      const errors = getAllErrors(rootDir);
+      const entry = errors.find((e) => e.id === errorId);
+      if (!entry) {
+        console.log(`\n❌ 未找到错误: ${errorId}`);
+        return;
+      }
+      // Optional --pattern flag
+      const patternIdx = args.indexOf("--pattern");
+      const customPattern = patternIdx !== -1 && args[patternIdx + 1] ? args[patternIdx + 1] : null;
+      if (customPattern) {
+        entry.check = { type: "grep", pattern: customPattern };
+      }
+      const result = ratchetError(rootDir, entry);
+      if (result.ok) {
+        console.log(`\n${RATCHET_ADDED(result.id)}`);
+        console.log(`  描述: ${entry.description}`);
+        console.log(`  检查类型: ${entry.check?.type || "grep"}`);
+        if (entry.check?.pattern) console.log(`  模式: ${entry.check.pattern}`);
+        console.log("  提示: 可编辑 .stw/ratchet.json 自定义检查规则。");
+      } else {
+        console.log(`\n❌ ${result.error}`);
+      }
+      return;
+    }
+
+    if (sub === "remove" || sub === "rm") {
+      const ruleId = args[1];
+      if (!ruleId) {
+        console.log("用法: stw ratchet remove <rule-id>");
+        return;
+      }
+      const result = removeRatchetRule(rootDir, ruleId);
+      if (result.ok) {
+        console.log(`\n${RATCHET_REMOVED(ruleId)}`);
+      } else {
+        console.log(`\n❌ ${result.error}`);
+      }
+      return;
+    }
+
+    console.log(`未知子命令: ${sub}`);
+    console.log("用法: stw ratchet [list|add|remove]");
+  } catch (err) {
+    console.error(`\n❌ ratchet 失败: ${err.message}`);
+    process.exit(1);
+  }
+};
+
 const cmdRepair = () => {
   const rootDir = process.cwd();
   try {
@@ -728,6 +812,9 @@ switch (command) {
     break;
   case "check":
     cmdCheck();
+    break;
+  case "ratchet":
+    cmdRatchet();
     break;
   case "--help":
   case "-h":

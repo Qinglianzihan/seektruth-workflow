@@ -1,9 +1,10 @@
 import { spawnSync } from "node:child_process";
 import { CHECK_UNKNOWN_GATE, CHECK_EXEC_FAILED, CHECK_ALL_CLEAR } from "./messages.js";
+import { runRatchetCheck } from "./ratchet.js";
 
 /**
  * Gate definitions. Each gate has a label and a run(rootDir) function.
- * Add new gates here — Sprint 2 will add import-linter and ast-grep.
+ * Add new gates here — Sprint 2 adds ratchet, Sprint 3 will add import-linter and ast-grep.
  */
 const GATES = {
   lint: {
@@ -18,6 +19,13 @@ const GATES = {
         passed: result.status === 0,
         output: (result.stdout + result.stderr).trim() || CHECK_ALL_CLEAR,
       };
+    },
+  },
+
+  ratchet: {
+    label: "Ratchet",
+    run(rootDir) {
+      return runRatchetCheck(rootDir);
     },
   },
 

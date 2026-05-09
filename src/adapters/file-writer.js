@@ -177,11 +177,13 @@ export function writeStwFiles(rootDir, environment, conflicts) {
     .replaceAll(/\{\{DATE\}\}/g, now);
   writeGeneratedStwFile(stwDir, "Summary-Template.md", summary);
 
-  // 审查员 agent 定义文件（可选模板，不存在则跳过）
+  // 审查员 + 规划师 agent 定义文件（可选模板，不存在则跳过）
   const reviewerMd = join(TEMPLATES_DIR, "审查员.md");
   const reviewerClaudeMd = join(TEMPLATES_DIR, "审查员.claude.md");
+  const plannerMd = join(TEMPLATES_DIR, "规划师.md");
   if (existsSync(reviewerMd)) copyFileSync(reviewerMd, join(stwDir, "审查员.md"));
   if (existsSync(reviewerClaudeMd)) copyFileSync(reviewerClaudeMd, join(stwDir, "审查员.claude.md"));
+  if (existsSync(plannerMd)) copyFileSync(plannerMd, join(stwDir, "规划师.md"));
 
   // AI 工具集成：为检测到的每个工具自动注入 STW 工作流规范
   const TOOL_BOOTSTRAPS = {
