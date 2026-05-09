@@ -1,10 +1,11 @@
 import { spawnSync } from "node:child_process";
 import { CHECK_UNKNOWN_GATE, CHECK_EXEC_FAILED, CHECK_ALL_CLEAR } from "./messages.js";
 import { runRatchetCheck } from "./ratchet.js";
+import { runImportCheck } from "./import-linter.js";
 
 /**
  * Gate definitions. Each gate has a label and a run(rootDir) function.
- * Add new gates here — Sprint 2 adds ratchet, Sprint 3 will add import-linter and ast-grep.
+ * Gate A: ESLint (Sprint 1), Gate B: Import Linter (Sprint 3), Gate C: Ratchet (Sprint 2)
  */
 const GATES = {
   lint: {
@@ -19,6 +20,13 @@ const GATES = {
         passed: result.status === 0,
         output: (result.stdout + result.stderr).trim() || CHECK_ALL_CLEAR,
       };
+    },
+  },
+
+  "import-linter": {
+    label: "Import Linter",
+    run(rootDir) {
+      return runImportCheck(rootDir);
     },
   },
 

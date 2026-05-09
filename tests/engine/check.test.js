@@ -45,6 +45,8 @@ describe("runCheck", () => {
   it("defaults to all gates when none specified", () => {
     const result = runCheck(process.cwd());
     assert.ok("lint" in result.results);
+    assert.ok("import-linter" in result.results);
+    assert.ok("ratchet" in result.results);
     assert.ok("test" in result.results);
   });
 });
@@ -53,9 +55,11 @@ describe("listGates", () => {
   it("returns array of gate definitions", () => {
     const gates = listGates();
     assert.ok(Array.isArray(gates));
-    assert.ok(gates.length >= 2);
+    assert.ok(gates.length >= 4);
     const ids = gates.map((g) => g.id);
     assert.ok(ids.includes("lint"));
+    assert.ok(ids.includes("import-linter"));
+    assert.ok(ids.includes("ratchet"));
     assert.ok(ids.includes("test"));
   });
 
@@ -76,6 +80,7 @@ describe("stw check CLI", () => {
     });
     assert.equal(result.status, 0);
     assert.ok(result.stdout.includes("lint"));
+    assert.ok(result.stdout.includes("import-linter"));
     assert.ok(result.stdout.includes("test"));
   });
 

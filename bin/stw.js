@@ -16,7 +16,7 @@ import { selectAiTools } from "../src/adapters/tool-selector.js";
 import { getCurrentPhase, PHASES, startSession, advancePhase, abortSession, rollbackSession, getSessionConfig, readTestResults } from "../src/engine/state-machine.js";
 import { generateLockdown, checkDirtyTree } from "../src/engine/lockdown.js";
 import { archiveReport, listReports, getRecentSummaries } from "../src/engine/report.js";
-import { getStats, generateStatsReport, logTokens } from "../src/engine/stats.js";
+import { getStats, generateStatsReport, logTokens, logGateResult } from "../src/engine/stats.js";
 import { getRelatedErrors, getAllErrors } from "../src/engine/error-registry.js";
 import { deepScanMcp } from "../src/scout/mcp-deep-scanner.js";
 import { runCheck, listGates } from "../src/engine/check.js";
@@ -511,6 +511,9 @@ const cmdCheck = () => {
 
   try {
     const result = runCheck(rootDir, gates);
+
+    // Persist gate history for trend analysis
+    logGateResult(rootDir, result.results, result.ok);
 
     let hasOutput = false;
     for (const [gate, r] of Object.entries(result.results)) {
