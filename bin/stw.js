@@ -19,6 +19,7 @@ import { archiveReport, listReports, getRecentSummaries } from "../src/engine/re
 import { getStats, generateStatsReport, logTokens } from "../src/engine/stats.js";
 import { getRelatedErrors } from "../src/engine/error-registry.js";
 import { deepScanMcp } from "../src/scout/mcp-deep-scanner.js";
+import { runCheck, listGates } from "../src/engine/check.js";
 import { injectQuote } from "../src/engine/quote-injector.js";
 import { PHASE_STORIES, ERROR_FRIENDLY, STATUS_EMPTY } from "../src/engine/messages.js";
 import { startForge, getForgeStatus, inspectForgeAgent, advanceForge, acceptForge, abortForge, runForgeAgents, AGENTS } from "../src/engine/forge.js";
@@ -44,6 +45,7 @@ const help = () => {
   console.log("  report         存档当前总结报告");
   console.log("  repair         修复/重新生成 .stw 文件");
   console.log("  stats          查看统计报告");
+  console.log("  check          运行所有质量门禁 (lint + test)");
   console.log("  forge          需求炼金炉：多 agent 需求讨论状态机");
 };
 
@@ -187,7 +189,7 @@ const cmdStart = () => {
 
     // Start or resume session
     const current = getCurrentPhase(rootDir);
-    if (current) {
+    if (current && current.phase !== "complete") {
       console.log("📋 已有进行中的任务。运行 stw status 查看当前进度。");
       return;
     }
@@ -488,6 +490,48 @@ const cmdAbort = () => {
 };
 
 
+const cmdCheck = () => {
+  const rootDir = process.cwd();
+  const args = process.argv.slice(3);
+
+  if (args.includes("--list")) {
+    const gates = listGates();
+    console.log("\n可用门禁：");
+    for (const g of gates) {
+      console.log(`  · ${g.id} — ${g.label}`);
+    }
+    return;
+  }
+
+  const gates = args.length > 0 && !args[0].startsWith("-")
+    ? args.filter((a) => !a.startsWith("-"))
+    : undefined;
+
+  try {
+    const result = runCheck(rootDir, gates);
+
+    let hasOutput = false;
+    for (const [gate, r] of Object.entries(result.results)) {
+      if (r.output) {
+        if (hasOutput) console.log("");
+        console.log(`── ${gate} ${r.passed ? "✅" : "❌"} ──`);
+        console.log(r.output);
+        hasOutput = true;
+      }
+    }
+
+    if (result.ok) {
+      console.log("\n✅ 所有门禁通过");
+    } else {
+      console.log("\n❌ 部分门禁未通过");
+      process.exit(1);
+    }
+  } catch (err) {
+    console.error(`\n❌ check 失败: ${err.message}`);
+    process.exit(1);
+  }
+};
+
 const cmdForge = async () => {
   const rootDir = process.cwd();
   const args = process.argv.slice(3);
@@ -681,6 +725,9 @@ switch (command) {
       console.error(`\n❌ stats 失败: ${err.message}`);
       process.exit(1);
     });
+    break;
+  case "check":
+    cmdCheck();
     break;
   case "--help":
   case "-h":

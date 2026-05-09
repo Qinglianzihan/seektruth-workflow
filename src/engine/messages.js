@@ -59,3 +59,9 @@ export const ERROR_FRIENDLY = {
 };
 
 export const STATUS_EMPTY = "当前没有活跃的任务。要不要开始一个？\n\n  stw start --desc \"你的任务描述\"";
+
+export const CHECK_UNKNOWN_GATE = (gate) => `未知门禁: ${gate}`;
+export const CHECK_EXEC_FAILED = (msg) => `执行失败: ${msg}`;
+export const CHECK_ALL_CLEAR = "(无输出 — 全部通过)";
+export const CHECK_ALL_PASSED = "✅ 所有门禁通过";
+export const CHECK_SOME_FAILED = "❌ 部分门禁未通过";
