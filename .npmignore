@@ -1,0 +1,21 @@
+# 开发文档（仅用于项目内部参考）
+HARNESS_ENGINEERING.md
+
+# 开发技能中的文档
+skills/skill-maintenance/README.md
+
+# 测试文件（不在 files 字段中，显式排除以保安全）
+tests/
+coverage/
+.nyc_output/
+
+# 本地 STW 运行残留
+.stw/
+
+# Claude Code 本地配置
+.claude/settings.local.json
+.claude/settings.json
+
+# CI / 开发工具配置
+.github/
+.editorconfig
