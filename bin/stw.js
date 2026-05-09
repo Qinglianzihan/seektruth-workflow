@@ -22,7 +22,7 @@ import { deepScanMcp } from "../src/scout/mcp-deep-scanner.js";
 import { runCheck, listGates } from "../src/engine/check.js";
 import { ratchetError, getRatchetRules, removeRatchetRule } from "../src/engine/ratchet.js";
 import { injectQuote } from "../src/engine/quote-injector.js";
-import { PHASE_STORIES, ERROR_FRIENDLY, STATUS_EMPTY, RATCHET_ADDED, RATCHET_REMOVED, RATCHET_EMPTY } from "../src/engine/messages.js";
+import { PHASE_STORIES, ERROR_FRIENDLY, STATUS_EMPTY, RATCHET_ADDED, RATCHET_REMOVED, RATCHET_EMPTY, ATTACK_ZONE_CLEANUP_HINT } from "../src/engine/messages.js";
 import { startForge, getForgeStatus, inspectForgeAgent, advanceForge, acceptForge, abortForge, runForgeAgents, AGENTS } from "../src/engine/forge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -348,6 +348,8 @@ const cmdNext = () => {
    准备好了就开始下一个任务吧：
 
      stw start --desc "你的新任务"
+
+   ${ATTACK_ZONE_CLEANUP_HINT}
 `);
       return;
     }

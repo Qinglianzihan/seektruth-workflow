@@ -45,15 +45,30 @@ export function getCurrentPhase(rootDir) {
 }
 
 export function startSession(rootDir, taskDescription = "") {
+  const now = new Date().toISOString();
   const data = {
     phase: 1,
-    startedAt: new Date().toISOString(),
+    startedAt: now,
     completedPhases: [],
     iterations: [],
     taskDescription,
+    phaseStartedAt: now,
+    phaseTimings: [],
   };
   writeProgress(rootDir, data);
   return getCurrentPhase(rootDir);
+}
+
+function recordPhaseTiming(progress) {
+  if (!progress.phaseTimings) progress.phaseTimings = [];
+  const startedAt = progress.phaseStartedAt || progress.startedAt;
+  const now = new Date().toISOString();
+  progress.phaseTimings.push({
+    phase: progress.phase,
+    startedAt,
+    completedAt: now,
+    durationMs: Date.now() - new Date(startedAt).getTime(),
+  });
 }
 
 function deliverableExists(rootDir, deliverable) {
@@ -164,13 +179,16 @@ export function advancePhase(rootDir) {
   // Check if this is the last phase
   if (progress.phase >= PHASES.length) {
     progress.completedPhases.push(progress.phase);
+    recordPhaseTiming(progress);
     writeProgress(rootDir, { ...progress, phase: "complete" });
     return { ok: true, done: true, phase: "complete" };
   }
 
   // Advance
   progress.completedPhases.push(progress.phase);
+  recordPhaseTiming(progress);
   progress.phase += 1;
+  progress.phaseStartedAt = new Date().toISOString();
   writeProgress(rootDir, progress);
 
   const nextPhase = PHASES.find((p) => p.id === progress.phase);

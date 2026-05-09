@@ -8,7 +8,6 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 const CLAUDE_SETTINGS = join(homedir(), ".claude", "settings.json");
 const CLAUDE_SETTINGS_LOCAL = join(homedir(), ".claude", "settings.local.json");
 const PLUGIN_MARKETPLACE = join(homedir(), ".claude", "plugins", "marketplaces");
-const INSTALLED_PLUGINS = join(homedir(), ".claude", "plugins", "installed_plugins.json");
 
 const CONNECT_TIMEOUT = 10_000;
 const MAX_CONCURRENT = 4;

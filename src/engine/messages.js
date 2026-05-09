@@ -54,11 +54,13 @@ export const ERROR_FRIENDLY = {
   fileBounds: (count, total, zones) =>
     `发现 ${count} 个文件被修改，但不在作战区域内（共 ${total} 个变更）。\n\n允许修改的区域只有：${zones.join(", ")}\n\n你是不是改了不该改的东西？回滚那些越界的修改，或者把它们加到 ATTACK_ZONE 声明里。`,
   changePlan: (count) =>
-    `${count} 个文件被修改了，但没有在变更计划里声明。\n\n变更计划在 Analysis-Template.md 的「4.5 变更计划声明」章节。把漏掉的文件补上，每行说明改了什么、为什么改。`,
-  noChangePlan: "变更计划还是空的。\n\n打开 Analysis-Template.md，找到「4.5 变更计划声明」，列出你打算修改的每个文件。不然我不知道你是真的需要改，还是在随手乱改。",
+    `${count} 个文件被修改了，但没有在变更计划里声明。\n\n变更计划在 Analysis-Template.md 的「4.5 变更计划声明」章节。把漏掉的文件补上，每行说明改了什么、为什么改。\n\n💡 如果这些文件是上一个 Sprint 的遗留修改，先 git commit 提交它们，再重新 /stw next。`,
+  noChangePlan: "变更计划还是空的。\n\n打开 Analysis-Template.md，找到「4.5 变更计划声明」，列出你打算修改的每个文件。不然我不知道你是真的需要改，还是在随手乱改。\n\n💡 如果 git diff 里有之前 Sprint 未提交的文件，先 commit 它们。",
 };
 
 export const STATUS_EMPTY = "当前没有活跃的任务。要不要开始一个？\n\n  stw start --desc \"你的任务描述\"";
+
+export const ATTACK_ZONE_CLEANUP_HINT = "💡 旧 Sprint 的 ATTACK_ZONE 声明会累积。任务完成后建议清理 STW-Workspace.md 中已完成 Sprint 的作战区域章节。";
 
 export const CHECK_UNKNOWN_GATE = (gate) => `未知门禁: ${gate}`;
 export const CHECK_EXEC_FAILED = (msg) => `执行失败: ${msg}`;

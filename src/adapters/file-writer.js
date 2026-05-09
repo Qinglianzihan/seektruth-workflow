@@ -77,19 +77,6 @@ function writeNativePluginFiles(rootDir) {
   }
 }
 
-function makeSummary(report, environment) {
-  const parts = [];
-  if (environment.project) {
-    parts.push(`项目类型: ${environment.project.type}`);
-  }
-  if (environment.aiTools.length > 0) {
-    parts.push(
-      `AI 工具: ${environment.aiTools.map((t) => t.name).join(", ")}`,
-    );
-  }
-  return parts.join(" | ") || "未检测到环境信息";
-}
-
 function makeMcpTable(mcpConfigs) {
   if (mcpConfigs.length === 0) return "未发现 MCP 服务器";
   const rows = ["| 来源 | 服务器 |", "| :--- | :--- |"];
