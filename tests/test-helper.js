@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -76,4 +76,24 @@ export function writePassingReviewerReport(dir) {
     "## 纪律检查\n所有修改在 ATTACK_ZONE 内。\n\n" +
     "## 结论\n\n**结论**: 通过\n"
   );
+}
+
+/**
+ * Synchronously read .stw/events.jsonl and return parsed entries.
+ * Malformed lines are skipped. Useful for tests asserting event sequences.
+ */
+export function readEventsForTest(dir) {
+  const path = join(dir, ".stw", "events.jsonl");
+  if (!existsSync(path)) return [];
+  const content = readFileSync(path, "utf-8");
+  const out = [];
+  for (const line of content.split("\n")) {
+    if (!line) continue;
+    try {
+      out.push(JSON.parse(line));
+    } catch {
+      // skip malformed
+    }
+  }
+  return out;
 }

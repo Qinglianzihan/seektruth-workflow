@@ -21,10 +21,12 @@ import { getRelatedErrors, getAllErrors, findRelatedErrorsByTask } from "../src/
 import { deepScanMcp } from "../src/scout/mcp-deep-scanner.js";
 import { runCheck, listGates } from "../src/engine/check.js";
 import { runHook } from "../src/engine/hook.js";
+import { readEvents } from "../src/engine/events.js";
+import { formatTimeline, findRootCause, summarizeEvent } from "../src/engine/replay.js";
 import { injectSimilarCases } from "../src/engine/analysis-injector.js";
 import { ratchetError, getRatchetRules, removeRatchetRule } from "../src/engine/ratchet.js";
 import { injectQuote } from "../src/engine/quote-injector.js";
-import { PHASE_STORIES, ERROR_FRIENDLY, STATUS_EMPTY, RATCHET_ADDED, RATCHET_REMOVED, RATCHET_EMPTY, ATTACK_ZONE_CLEANUP_HINT } from "../src/engine/messages.js";
+import { PHASE_STORIES, ERROR_FRIENDLY, STATUS_EMPTY, RATCHET_ADDED, RATCHET_REMOVED, RATCHET_EMPTY, ATTACK_ZONE_CLEANUP_HINT, REPLAY_EMPTY, REPLAY_TIMELINE_HEADER, REPLAY_ROOT_CAUSE_NONE, REPLAY_ROOT_CAUSE_HEADER, REPLAY_ROOT_CAUSE_FAILURE, REPLAY_ROOT_CAUSE_CONTEXT, REPLAY_ROTATED_HINT } from "../src/engine/messages.js";
 import { startForge, getForgeStatus, inspectForgeAgent, advanceForge, acceptForge, abortForge, runForgeAgents, AGENTS } from "../src/engine/forge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -50,6 +52,7 @@ const help = () => {
   console.log("  stats          查看统计报告");
   console.log("  check          运行所有质量门禁 (lint + ratchet + test)");
   console.log("  hook run       由 AI 工具 hook 触发的轻量体检（lint + 阶段 3+ 范围检查）");
+  console.log("  replay         回放 .stw/events.jsonl 事件流 (--tail / --type / --task / --root-cause / --json)");
   console.log("  ratchet        管理 Ratchet 规则 (list/add/remove)");
   console.log("  forge          需求炼金炉：多 agent 需求讨论状态机");
 };
@@ -580,6 +583,68 @@ const cmdHook = () => {
   process.exit(result.exitCode);
 };
 
+const cmdReplay = async () => {
+  const rootDir = process.cwd();
+  const args = process.argv.slice(3);
+
+  const tailIdx = args.indexOf("--tail");
+  const tail = tailIdx !== -1 && args[tailIdx + 1] ? parseInt(args[tailIdx + 1], 10) : 20;
+  const typeIdx = args.indexOf("--type");
+  const typeFilter = typeIdx !== -1 ? args[typeIdx + 1] : undefined;
+  const taskIdx = args.indexOf("--task");
+  const taskFilter = taskIdx !== -1 ? args[taskIdx + 1] : undefined;
+  const asJson = args.includes("--json");
+  const rootCause = args.includes("--root-cause");
+  const contextIdx = args.indexOf("--context");
+  const contextLimit = contextIdx !== -1 && args[contextIdx + 1]
+    ? parseInt(args[contextIdx + 1], 10) : 10;
+
+  const events = await readEvents(rootDir, { typeFilter, taskFilter });
+
+  if (events.length === 0) {
+    console.log(REPLAY_EMPTY);
+    return;
+  }
+
+  if (rootCause) {
+    const report = findRootCause(events, { contextLimit });
+    if (!report.found) {
+      if (asJson) {
+        console.log(JSON.stringify(report));
+      } else {
+        console.log(REPLAY_ROOT_CAUSE_NONE);
+      }
+      return;
+    }
+    if (asJson) {
+      console.log(JSON.stringify(report, null, 2));
+      return;
+    }
+    console.log(REPLAY_ROOT_CAUSE_HEADER);
+    console.log(REPLAY_ROOT_CAUSE_FAILURE);
+    console.log("  " + summarizeEvent(report.failure));
+    console.log(REPLAY_ROOT_CAUSE_CONTEXT(report.context.length));
+    for (const ev of report.context) {
+      console.log("  " + summarizeEvent(ev));
+    }
+    return;
+  }
+
+  const slice = tail > 0 && events.length > tail ? events.slice(-tail) : events;
+
+  if (asJson) {
+    console.log(JSON.stringify(slice, null, 2));
+    return;
+  }
+
+  console.log(REPLAY_TIMELINE_HEADER(slice.length));
+  console.log(formatTimeline(slice));
+  if (events.length > slice.length) {
+    console.log(`\n(完整 ${events.length} 条，当前显示末尾 ${slice.length} 条。加 --tail N 调整。)`);
+  }
+  console.log(`\n${REPLAY_ROTATED_HINT}`);
+};
+
 const cmdForge = async () => {
   const rootDir = process.cwd();
   const args = process.argv.slice(3);
@@ -861,6 +926,12 @@ switch (command) {
     break;
   case "hook":
     cmdHook();
+    break;
+  case "replay":
+    cmdReplay().catch((err) => {
+      console.error(`\n❌ replay 失败: ${err.message}`);
+      process.exit(1);
+    });
     break;
   case "ratchet":
     cmdRatchet();

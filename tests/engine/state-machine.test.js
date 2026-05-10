@@ -12,7 +12,7 @@ import {
   getSessionConfig,
   readTestResults,
 } from "../../src/engine/state-machine.js";
-import { freshDir, writeStwFile, writePassingAnalysis, writePassingPlannerReport, writePassingReviewerReport } from "../test-helper.js";
+import { freshDir, writeStwFile, writePassingAnalysis, writePassingPlannerReport, writePassingReviewerReport, readEventsForTest } from "../test-helper.js";
 import { spawnSync } from "node:child_process";
 
 describe("State Machine — basic operations", () => {
@@ -242,6 +242,96 @@ describe("State Machine — rollback", () => {
     startSession(dir);
     const session = getCurrentPhase(dir);
     assert.deepEqual(session.iterations, []);
+  });
+});
+
+describe("State Machine — events instrumentation", () => {
+  it("emits session.start on startSession and phase.advance.ok on successful advance", () => {
+    const dir = freshDir();
+    writePassingAnalysis(dir);
+    startSession(dir, "demo task");
+    advancePhase(dir); // 1→2
+    const events = readEventsForTest(dir);
+    const types = events.map((e) => e.type);
+    assert.ok(types.includes("session.start"), "expected session.start, got " + types.join(","));
+    assert.ok(types.includes("gate.confidence"));
+    assert.ok(types.includes("phase.advance.ok"));
+    const advance = events.find((e) => e.type === "phase.advance.ok");
+    assert.equal(advance.data.from, 1);
+    assert.equal(advance.data.to, 2);
+  });
+
+  it("emits phase.advance.denied with gate name on failure", () => {
+    const dir = freshDir();
+    startSession(dir, "demo");
+    const result = advancePhase(dir); // no Analysis-Template → deliverable gate fails
+    assert.equal(result.ok, false);
+    const events = readEventsForTest(dir);
+    const denied = events.find((e) => e.type === "phase.advance.denied");
+    assert.ok(denied, "expected phase.advance.denied event");
+    assert.equal(denied.data.gate, "deliverable");
+    assert.equal(denied.data.phase, 1);
+  });
+
+  it("emits gate.planner event with conclusion on planner gate", () => {
+    const dir = freshDir();
+    writePassingAnalysis(dir);
+    writeStwFile(dir, "STW-Workspace.md", "# W\n<!-- ATTACK_ZONE: src/* -->");
+    writePassingPlannerReport(dir);
+    startSession(dir);
+    advancePhase(dir); // 1→2
+    advancePhase(dir); // 2→3 (planner gate fires)
+    const events = readEventsForTest(dir);
+    const planner = events.find((e) => e.type === "gate.planner");
+    assert.ok(planner, "expected gate.planner event");
+    assert.equal(planner.data.ok, true);
+    assert.ok(String(planner.data.conclusion).includes("可以推进"));
+  });
+
+  it("emits session.rollback with fromPhase on rollback", () => {
+    const dir = freshDir();
+    writePassingAnalysis(dir);
+    startSession(dir);
+    advancePhase(dir); // 1→2
+    rollbackSession(dir, "test reason");
+    const events = readEventsForTest(dir);
+    const rb = events.find((e) => e.type === "session.rollback");
+    assert.ok(rb, "expected session.rollback event");
+    assert.equal(rb.data.fromPhase, 2);
+    assert.equal(rb.data.reason, "test reason");
+  });
+
+  it("emits session.abort with phase captured", () => {
+    const dir = freshDir();
+    writePassingAnalysis(dir);
+    startSession(dir);
+    advancePhase(dir); // 1→2
+    abortSession(dir);
+    const events = readEventsForTest(dir);
+    const ab = events.find((e) => e.type === "session.abort");
+    assert.ok(ab, "expected session.abort event");
+    assert.equal(ab.data.phase, 2);
+  });
+
+  it("emits session.complete on final phase transition", () => {
+    const dir = freshDir();
+    writePassingAnalysis(dir);
+    writeStwFile(dir, "STW-Workspace.md", "# W\n<!-- ATTACK_ZONE: src/* -->");
+    writePassingPlannerReport(dir);
+    writePassingReviewerReport(dir);
+    writeStwFile(dir, "lockdown.json", "{}");
+    writeStwFile(dir, "test-results.json", '{"passed":true}');
+    writeStwFile(dir, "Summary-Template.md", "# S");
+    startSession(dir);
+    advancePhase(dir); // 1→2
+    advancePhase(dir); // 2→3
+    advancePhase(dir); // 3→4
+    advancePhase(dir); // 4→5
+    advancePhase(dir); // 5→complete
+    const events = readEventsForTest(dir);
+    const complete = events.find((e) => e.type === "session.complete");
+    assert.ok(complete, "expected session.complete event");
+    assert.equal(complete.data.finalPhase, 5);
   });
 });
 

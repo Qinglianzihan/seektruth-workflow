@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { CHECK_UNKNOWN_GATE, CHECK_EXEC_FAILED, CHECK_ALL_CLEAR } from "./messages.js";
 import { runRatchetCheck } from "./ratchet.js";
 import { runImportCheck } from "./import-linter.js";
+import { appendEvent, truncateForEvent } from "./events.js";
 
 /**
  * Gate definitions. Each gate has a label and a run(rootDir) function.
@@ -60,22 +61,41 @@ const GATES = {
 export function runCheck(rootDir, gates = Object.keys(GATES)) {
   const results = {};
   let allPassed = true;
+  const failed = [];
 
   for (const gate of gates) {
     if (!GATES[gate]) {
       results[gate] = { passed: false, output: CHECK_UNKNOWN_GATE(gate) };
       allPassed = false;
+      failed.push(gate);
+      appendEvent(rootDir, "gate.run", { gate, passed: false, unknown: true });
       continue;
     }
     try {
       const gateResult = GATES[gate].run(rootDir);
       results[gate] = gateResult;
-      if (!gateResult.passed) allPassed = false;
+      if (!gateResult.passed) {
+        allPassed = false;
+        failed.push(gate);
+      }
+      appendEvent(rootDir, "gate.run", {
+        gate,
+        passed: gateResult.passed,
+        output: truncateForEvent(gateResult.output, 2000),
+      });
     } catch (err) {
       results[gate] = { passed: false, output: CHECK_EXEC_FAILED(err.message) };
       allPassed = false;
+      failed.push(gate);
+      appendEvent(rootDir, "gate.run", {
+        gate,
+        passed: false,
+        error: truncateForEvent(err.message, 500),
+      });
     }
   }
+
+  appendEvent(rootDir, "check.summary", { ok: allPassed, failed, gates });
 
   return { ok: allPassed, results };
 }

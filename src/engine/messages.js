@@ -72,3 +72,11 @@ export const RATCHET_ADDED = (id) => `已注册 Ratchet 规则: ${id}`;
 export const RATCHET_REMOVED = (id) => `已移除 Ratchet 规则: ${id}`;
 export const RATCHET_EMPTY = "(无已注册的 Ratchet 规则)";
 export const RATCHET_NOT_FOUND = (id) => `未找到 Ratchet 规则: ${id}`;
+
+export const REPLAY_EMPTY = "(events.jsonl 尚未产生事件——跑一轮 stw start / next / check 再来回放。)";
+export const REPLAY_TIMELINE_HEADER = (count) => `\n📜 事件时间线 (最近 ${count} 条)：\n`;
+export const REPLAY_ROOT_CAUSE_NONE = "✅ 未发现失败/拒绝事件。";
+export const REPLAY_ROOT_CAUSE_HEADER = "\n🔍 根因回溯——最近一次失败及其上游决策：\n";
+export const REPLAY_ROOT_CAUSE_FAILURE = "\n❌ 失败事件：";
+export const REPLAY_ROOT_CAUSE_CONTEXT = (n) => `\n🧾 同任务上游决策 (最近 ${n} 条)：`;
+export const REPLAY_ROTATED_HINT = "💡 事件超过 10000 条会轮转到 events.jsonl.1。如怀疑跨轮转，请手动 grep .stw/events.jsonl.1。";

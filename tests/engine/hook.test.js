@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { runHook } from "../../src/engine/hook.js";
-import { freshDir, writeStwFile } from "../test-helper.js";
+import { freshDir, writeStwFile, readEventsForTest } from "../test-helper.js";
 
 const PASS_LINT = () => ({ ok: true, results: { lint: { passed: true, output: "" } } });
 const FAIL_LINT = () => ({
@@ -157,5 +157,40 @@ describe("runHook — resilience", () => {
     assert.equal(result.exitCode, 2);
     assert.ok(result.stderr.includes("范围检查执行出错"));
     assert.ok(result.stderr.includes("git unavailable"));
+  });
+});
+
+describe("runHook — events instrumentation", () => {
+  it("emits a hook.run event with exitCode=0 on success", () => {
+    const dir = freshDir();
+    withProgress(dir, 1);
+    runHook({ rootDir: dir }, { lintRunner: PASS_LINT });
+    const events = readEventsForTest(dir);
+    const hook = events.find((e) => e.type === "hook.run");
+    assert.ok(hook, "expected hook.run event");
+    assert.equal(hook.data.exitCode, 0);
+    assert.equal(hook.data.failureCount, 0);
+    assert.equal(hook.data.event, "PostToolUse");
+  });
+
+  it("emits a hook.run event with failures[] on lint failure", () => {
+    const dir = freshDir();
+    withProgress(dir, 2);
+    runHook({ rootDir: dir, event: "UserPromptSubmit" }, { lintRunner: FAIL_LINT });
+    const events = readEventsForTest(dir);
+    const hook = events.find((e) => e.type === "hook.run");
+    assert.ok(hook);
+    assert.equal(hook.data.exitCode, 2);
+    assert.equal(hook.data.failureCount, 1);
+    assert.equal(hook.data.event, "UserPromptSubmit");
+    assert.ok(Array.isArray(hook.data.failures));
+    assert.ok(hook.data.failures[0].includes("lint 未通过"));
+  });
+
+  it("does not emit events when no .stw/.progress.json (silent early return)", () => {
+    const dir = freshDir();
+    runHook({ rootDir: dir }, { lintRunner: () => { throw new Error("n/a"); } });
+    const events = readEventsForTest(dir);
+    assert.equal(events.length, 0);
   });
 });

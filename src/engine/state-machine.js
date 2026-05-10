@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { parseAttackZones, checkFileBounds, checkChangePlan, checkDepsChange } from "./lockdown.js";
 import { assessConfidence } from "./confidence-gate.js";
+import { appendEvent } from "./events.js";
 
 export const PHASES = [
   { id: 1, name: "调查研究", nameEn: "Investigate", deliverable: ".stw/Analysis-Template.md" },
@@ -56,6 +57,7 @@ export function startSession(rootDir, taskDescription = "") {
     phaseTimings: [],
   };
   writeProgress(rootDir, data);
+  appendEvent(rootDir, "session.start", { taskDescription, startedAt: now });
   return getCurrentPhase(rootDir);
 }
 
@@ -162,13 +164,22 @@ export function advancePhase(rootDir) {
     return { ok: false, error: "无效的阶段。" };
   }
 
+  const denyAndReturn = (gate, payload) => {
+    appendEvent(rootDir, "phase.advance.denied", {
+      phase: progress.phase,
+      gate,
+      error: payload.error,
+    });
+    return payload;
+  };
+
   // Check deliverable
   if (!deliverableExists(rootDir, currentPhase.deliverable)) {
-    return {
+    return denyAndReturn("deliverable", {
       ok: false,
       error: `阶段 ${currentPhase.id} (${currentPhase.name}) 的交付物未完成。`,
       required: currentPhase.deliverable,
-    };
+    });
   }
 
   // Confidence gate: phase 1→2
@@ -188,13 +199,20 @@ export function advancePhase(rootDir) {
 
     if (gateEnabled) {
       const { ready, score, gaps } = assessConfidence(rootDir);
+      appendEvent(rootDir, "gate.confidence", {
+        ok: ready && score >= threshold,
+        score,
+        threshold,
+        ready,
+        gapCount: gaps.length,
+      });
       if (!ready || score < threshold) {
         const gapList = gaps.length > 0 ? `\n${gaps.map((g) => `  · ${g}`).join("\n")}` : "";
-        return {
+        return denyAndReturn("confidence", {
           ok: false,
           error: `战前评估不充分 (${score}/10，需要 ≥ ${threshold}) — 不打无把握之仗`,
           required: `补充以下章节:${gapList}`,
-        };
+        });
       }
     }
   }
@@ -202,44 +220,65 @@ export function advancePhase(rootDir) {
   // Planner gate: phase 2→3 — require independent 规划师 report (Anthropic: Planner ≠ Generator)
   if (progress.phase === 2 && plannerReviewerEnabled(rootDir)) {
     const planner = checkPlannerReport(rootDir);
+    appendEvent(rootDir, "gate.planner", {
+      ok: planner.ok,
+      conclusion: planner.conclusion ?? null,
+      missing: planner.missing ?? false,
+    });
     if (!planner.ok) {
-      return {
+      return denyAndReturn("planner", {
         ok: false,
         error: planner.error,
         required: '由独立的「规划师」Agent 填写 .stw/planner-report.md，并在 "**结论**:" 行写入 "可以推进"。',
-      };
+      });
     }
   }
 
   // File bounds + change plan + deps: phase 3→4
   if (progress.phase === 3) {
     const bounds = checkFileBounds(rootDir);
+    appendEvent(rootDir, "gate.bounds", {
+      ok: bounds.ok,
+      violationCount: (bounds.violations || []).length,
+      totalFiles: bounds.totalFiles ?? 0,
+      zones: bounds.zones || [],
+      violations: (bounds.violations || []).slice(0, 20),
+    });
     if (!bounds.ok) {
       if (bounds.error) {
-        return { ok: false, error: bounds.error };
+        return denyAndReturn("bounds", { ok: false, error: bounds.error });
       }
       const violationList = bounds.violations.map((f) => `  · ${f}`).join("\n");
-      return {
+      return denyAndReturn("bounds", {
         ok: false,
         error: `检测到 ${bounds.violations.length} 个文件越界修改（共 ${bounds.totalFiles} 个变更文件）：\n${violationList}`,
         required: `仅允许修改以下区域: ${bounds.zones.join(", ")}。将越界文件回滚后重试。`,
-      };
+      });
     }
 
     const changePlan = checkChangePlan(rootDir);
+    appendEvent(rootDir, "gate.changePlan", {
+      ok: changePlan.ok,
+      unplannedCount: (changePlan.unplanned || []).length,
+      unplanned: (changePlan.unplanned || []).slice(0, 20),
+    });
     if (!changePlan.ok) {
       if (changePlan.error) {
-        return { ok: false, error: changePlan.error };
+        return denyAndReturn("changePlan", { ok: false, error: changePlan.error });
       }
       const unplannedList = changePlan.unplanned.map((f) => `  · ${f}`).join("\n");
-      return {
+      return denyAndReturn("changePlan", {
         ok: false,
         error: `${changePlan.unplanned.length} 个文件未在变更计划中声明：\n${unplannedList}`,
         required: "请在 Analysis-Template.md 的变更计划声明中补充改动类型和理由。",
-      };
+      });
     }
 
     const deps = checkDepsChange(rootDir);
+    appendEvent(rootDir, "gate.deps", {
+      changed: deps.changed || [],
+      warning: deps.warning ?? null,
+    });
     if (deps.warning) {
       console.log(`\n  ⚠️  ${deps.warning}`);
     }
@@ -248,29 +287,38 @@ export function advancePhase(rootDir) {
   // Reviewer gate: phase 4→5 — require independent 审查员 report (Anthropic: Evaluator ≠ Generator)
   if (progress.phase === 4 && plannerReviewerEnabled(rootDir)) {
     const reviewer = checkReviewerReport(rootDir);
+    appendEvent(rootDir, "gate.reviewer", {
+      ok: reviewer.ok,
+      conclusion: reviewer.conclusion ?? null,
+      missing: reviewer.missing ?? false,
+    });
     if (!reviewer.ok) {
-      return {
+      return denyAndReturn("reviewer", {
         ok: false,
         error: reviewer.error,
         required: '由独立的「审查员」Agent 填写 .stw/reviewer-report.md，并在 "**结论**:" 行写入 "通过" 或 "有条件通过"。',
-      };
+      });
     }
   }
 
   // Check if this is the last phase
   if (progress.phase >= PHASES.length) {
+    const finalPhase = progress.phase;
     progress.completedPhases.push(progress.phase);
     recordPhaseTiming(progress);
     writeProgress(rootDir, { ...progress, phase: "complete" });
+    appendEvent(rootDir, "session.complete", { finalPhase });
     return { ok: true, done: true, phase: "complete" };
   }
 
   // Advance
+  const from = progress.phase;
   progress.completedPhases.push(progress.phase);
   recordPhaseTiming(progress);
   progress.phase += 1;
   progress.phaseStartedAt = new Date().toISOString();
   writeProgress(rootDir, progress);
+  appendEvent(rootDir, "phase.advance.ok", { from, to: progress.phase });
 
   const nextPhase = PHASES.find((p) => p.id === progress.phase);
   return { ok: true, done: false, phase: nextPhase };
@@ -286,6 +334,7 @@ export function rollbackSession(rootDir, reason) {
   }
 
   if (!progress.iterations) progress.iterations = [];
+  const fromPhase = progress.phase;
   progress.iterations.push({
     phase: progress.phase,
     reason: reason || "未说明原因",
@@ -294,6 +343,12 @@ export function rollbackSession(rootDir, reason) {
 
   progress.phase = 1;
   writeProgress(rootDir, progress);
+
+  appendEvent(rootDir, "session.rollback", {
+    fromPhase,
+    reason: reason || "未说明原因",
+    iterations: progress.iterations.length,
+  });
 
   return {
     ok: true,
@@ -331,11 +386,14 @@ export function abortSession(rootDir) {
   if (!progress) {
     return { ok: false, error: "没有活跃的任务可中止。" };
   }
+  const abortedPhase = progress.phase;
+  const abortedTask = progress.taskDescription || "";
   const path = progressPath(rootDir);
   try {
     rmSync(path);
   } catch {
     return { ok: false, error: "无法删除进度文件。" };
   }
+  appendEvent(rootDir, "session.abort", { phase: abortedPhase, task: abortedTask });
   return { ok: true };
 }

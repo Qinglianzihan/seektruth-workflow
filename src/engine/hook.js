@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { getCurrentPhase } from "./state-machine.js";
 import { runCheck } from "./check.js";
 import { checkFileBounds } from "./lockdown.js";
+import { appendEvent, truncateForEvent } from "./events.js";
 
 /**
  * Run the STW hook for a given event. Designed to be invoked by Claude Code
@@ -67,8 +68,15 @@ export function runHook({ rootDir, event = "PostToolUse" } = {}, deps = {}) {
   }
 
   if (failures.length === 0) {
+    appendEvent(rootDir, "hook.run", { event, exitCode: 0, failureCount: 0 });
     return { exitCode: 0, stderr: "" };
   }
+  appendEvent(rootDir, "hook.run", {
+    event,
+    exitCode: 2,
+    failureCount: failures.length,
+    failures: failures.map((f) => truncateForEvent(f, 500)),
+  });
   return {
     exitCode: 2,
     stderr: failures.join("\n\n") + `\n\n(event: ${event})`,
