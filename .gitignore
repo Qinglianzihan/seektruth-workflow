@@ -31,3 +31,29 @@ CONTRIBUTING.md
 
 # 生成的技能文件（源在 templates/native-skills/）
 .claude/skills/
+
+# stw init 在本仓库生成的 AI 工具规则文件（仅本地使用）
+# 源在 src/adapters/file-writer.js 的 TOOL_BOOTSTRAPS
+AGENTS.md
+.cursorrules
+.clinerules
+.windsurfrules
+.aiderrules
+OPenCODE.md
+.github/copilot-instructions.md
+
+# 测试 / 覆盖率产物
+coverage/
+.nyc_output/
+
+# 打包产物
+*.tgz
+
+# 日志
+*.log
+npm-debug.log*
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
