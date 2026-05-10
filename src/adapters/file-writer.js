@@ -164,6 +164,10 @@ export function writeStwFiles(rootDir, environment, conflicts) {
     .replaceAll(/\{\{DATE\}\}/g, now);
   writeGeneratedStwFile(stwDir, "Summary-Template.md", summary);
 
+  // roadmap.md —— 跨任务路线图（与 .progress.json 单任务进度配合）
+  const roadmap = readTemplate("roadmap.md");
+  writeGeneratedStwFile(stwDir, "roadmap.md", roadmap);
+
   // 审查员 + 规划师 agent 定义文件（可选模板，不存在则跳过）
   const reviewerMd = join(TEMPLATES_DIR, "审查员.md");
   const reviewerClaudeMd = join(TEMPLATES_DIR, "审查员.claude.md");

@@ -24,6 +24,7 @@ describe("File Writer — basic output", () => {
       "STW-Workspace.md",
       "Analysis-Template.md",
       "Summary-Template.md",
+      "roadmap.md",
     ];
     for (const name of expected) {
       assert.ok(existsSync(join(dir, ".stw", name)), `missing: ${name}`);
@@ -74,6 +75,31 @@ describe("File Writer — basic output", () => {
     assert.ok("conflicts" in cfg);
     assert.ok("confidenceGate" in cfg);
     assert.equal(cfg.confidenceGate.threshold, 6);
+  });
+
+  it("roadmap.md is written with cross-task handoff skeleton", () => {
+    const dir = freshDir();
+    writeStwFiles(dir, EMPTY_ENV, EMPTY_CONFLICTS);
+    const roadmap = readFileSync(join(dir, ".stw", "roadmap.md"), "utf-8");
+    assert.ok(roadmap.includes("项目升级路线图"));
+    assert.ok(roadmap.includes("新会话标准协议"));
+    assert.ok(roadmap.includes("升级清单"));
+  });
+
+  it("archives user-edited roadmap.md on repeated init", () => {
+    const dir = freshDir();
+    writeStwFiles(dir, EMPTY_ENV, EMPTY_CONFLICTS);
+    writeFile(dir, ".stw/roadmap.md", "# 我的路线图\n- [x] 已完成的重要事项");
+
+    writeStwFiles(dir, EMPTY_ENV, EMPTY_CONFLICTS);
+
+    const historyRoot = join(dir, ".stw", "history");
+    const archived = readdirSync(historyRoot)
+      .map((dirName) => join(historyRoot, dirName, "roadmap.md"))
+      .filter((path) => existsSync(path))
+      .map((path) => readFileSync(path, "utf-8"))
+      .join("\n");
+    assert.ok(archived.includes("已完成的重要事项"), "user roadmap must be archived");
   });
 });
 
