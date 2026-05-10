@@ -42,6 +42,13 @@ export function createDefaultConfig() {
       threshold: 6,
     },
 
+    // Planner/Evaluator 门禁（Anthropic 一手源）
+    // 阶段 2→3 要求 .stw/planner-report.md 结论为"可以推进"
+    // 阶段 4→5 要求 .stw/reviewer-report.md 结论为"通过"或"有条件通过"
+    plannerReviewer: {
+      enabled: true,
+    },
+
     // 武器库快照（MCP + Skills 的摘要，用于生成 STW-Workspace.md）
     arsenal: {
       mcpSummary: "",

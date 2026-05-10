@@ -12,7 +12,7 @@ import {
   getSessionConfig,
   readTestResults,
 } from "../../src/engine/state-machine.js";
-import { freshDir, writeStwFile, writePassingAnalysis } from "../test-helper.js";
+import { freshDir, writeStwFile, writePassingAnalysis, writePassingPlannerReport, writePassingReviewerReport } from "../test-helper.js";
 import { spawnSync } from "node:child_process";
 
 describe("State Machine — basic operations", () => {
@@ -65,6 +65,7 @@ describe("State Machine — delivery checks", () => {
     const dir = freshDir();
     writePassingAnalysis(dir);
     writeStwFile(dir, "STW-Workspace.md", "# Workspace\n<!-- ATTACK_ZONE: src/* -->");
+    writePassingPlannerReport(dir);
     startSession(dir);
     advancePhase(dir); // → phase 2
     const result = advancePhase(dir); // → phase 3
@@ -76,6 +77,7 @@ describe("State Machine — delivery checks", () => {
     const dir = freshDir();
     writePassingAnalysis(dir);
     writeStwFile(dir, "STW-Workspace.md", "# Template\n```\n<!-- ATTACK_ZONE: src/* -->\n```");
+    writePassingPlannerReport(dir);
     startSession(dir);
     advancePhase(dir); // → phase 2
     const result = advancePhase(dir);
@@ -86,6 +88,7 @@ describe("State Machine — delivery checks", () => {
     const dir = freshDir();
     writePassingAnalysis(dir);
     writeStwFile(dir, "STW-Workspace.md", "# No zone declaration");
+    writePassingPlannerReport(dir);
     startSession(dir);
     advancePhase(dir); // → phase 2
     const result = advancePhase(dir);
@@ -96,6 +99,7 @@ describe("State Machine — delivery checks", () => {
     const dir = freshDir();
     writePassingAnalysis(dir);
     writeStwFile(dir, "STW-Workspace.md", "# W\n<!-- ATTACK_ZONE: src/* -->");
+    writePassingPlannerReport(dir);
     writeStwFile(dir, "lockdown.json", "{}");
     startSession(dir);
     advancePhase(dir); // → 2
@@ -109,6 +113,8 @@ describe("State Machine — delivery checks", () => {
     const dir = freshDir();
     writePassingAnalysis(dir);
     writeStwFile(dir, "STW-Workspace.md", "# W\n<!-- ATTACK_ZONE: src/* -->");
+    writePassingPlannerReport(dir);
+    writePassingReviewerReport(dir);
     writeStwFile(dir, "lockdown.json", "{}");
     writeStwFile(dir, "test-results.json", '{"passed":true}');
     writeStwFile(dir, "Summary-Template.md", "# S");
@@ -129,6 +135,8 @@ describe("State Machine — full lifecycle", () => {
     const dir = freshDir();
     writePassingAnalysis(dir);
     writeStwFile(dir, "STW-Workspace.md", "# W\n<!-- ATTACK_ZONE: src/* -->");
+    writePassingPlannerReport(dir);
+    writePassingReviewerReport(dir);
     startSession(dir);
 
     // Phase 1 → 2
@@ -196,6 +204,7 @@ describe("State Machine — rollback", () => {
     const dir = freshDir();
     writePassingAnalysis(dir);
     writeStwFile(dir, "STW-Workspace.md", "# W\n<!-- ATTACK_ZONE: src/* -->");
+    writePassingPlannerReport(dir);
     writeStwFile(dir, "lockdown.json", "{}");
     startSession(dir);
     advancePhase(dir); // → 2
@@ -261,6 +270,7 @@ describe("State Machine — file bounds enforcement (phase 3→4)", () => {
 
     // Prep for workflow
     writePassingAnalysis(dir);
+    writePassingPlannerReport(dir);
     writeStwFile(dir, "lockdown.json", '{"attackZones":["src/*"]}');
     startSession(dir);
     advancePhase(dir); // 1→2
@@ -284,6 +294,7 @@ describe("State Machine — file bounds enforcement (phase 3→4)", () => {
     run(["commit", "-m", "baseline"]);
 
     writePassingAnalysis(dir);
+    writePassingPlannerReport(dir);
     writeStwFile(dir, "lockdown.json", '{"attackZones":["src/*"]}');
     startSession(dir);
     advancePhase(dir); // 1→2
@@ -301,6 +312,7 @@ describe("State Machine — file bounds enforcement (phase 3→4)", () => {
     const dir = freshDir();
     writePassingAnalysis(dir);
     writeStwFile(dir, "STW-Workspace.md", "# W\n<!-- ATTACK_ZONE: src/* -->");
+    writePassingPlannerReport(dir);
     writeStwFile(dir, "lockdown.json", "{}");
     startSession(dir);
     advancePhase(dir); // 1→2
@@ -346,6 +358,7 @@ describe("State Machine — change plan enforcement (phase 3→4)", () => {
       "## 3. 主要矛盾分析\nThe core contradiction identified and documented.\n\n" +
       "## 4. 初步方案\nProposed solution approach with clear implementation path.\n"
     );
+    writePassingPlannerReport(dir);
     writeStwFile(dir, "lockdown.json", '{"attackZones":["src/*"]}');
     startSession(dir);
     advancePhase(dir); // 1→2
@@ -371,6 +384,7 @@ describe("State Machine — change plan enforcement (phase 3→4)", () => {
 
     // writePassingAnalysis includes 变更计划 declaring src/app.js
     writePassingAnalysis(dir);
+    writePassingPlannerReport(dir);
     writeStwFile(dir, "lockdown.json", '{"attackZones":["src/*"]}');
     startSession(dir);
     advancePhase(dir); // 1→2
@@ -455,5 +469,166 @@ describe("Scenario 17: readTestResults", () => {
     const dir = freshDir();
     writeStwFile(dir, "test-results.json", "not json");
     assert.equal(readTestResults(dir), null);
+  });
+});
+
+describe("State Machine — planner gate (phase 2→3)", () => {
+  it("blocks when planner-report.md is missing", () => {
+    const dir = freshDir();
+    writePassingAnalysis(dir);
+    writeStwFile(dir, "STW-Workspace.md", "# W\n<!-- ATTACK_ZONE: src/* -->");
+    startSession(dir);
+    advancePhase(dir); // 1→2
+    const result = advancePhase(dir); // 2→3 expected block
+    assert.equal(result.ok, false);
+    assert.ok(result.error.includes("规划师报告"), "should mention 规划师报告, got: " + result.error);
+  });
+
+  it("blocks when planner-report.md has empty conclusion", () => {
+    const dir = freshDir();
+    writePassingAnalysis(dir);
+    writeStwFile(dir, "STW-Workspace.md", "# W\n<!-- ATTACK_ZONE: src/* -->");
+    writeStwFile(dir, "planner-report.md",
+      "# 规划师报告\n\n## 结论\n\n**结论**: <!-- 还没填 -->\n"
+    );
+    startSession(dir);
+    advancePhase(dir); // 1→2
+    const result = advancePhase(dir); // 2→3
+    assert.equal(result.ok, false);
+    assert.ok(result.error.includes("空") || result.error.includes("占位"),
+      "should mention empty/placeholder, got: " + result.error);
+  });
+
+  it("blocks when planner verdict is '需要调整'", () => {
+    const dir = freshDir();
+    writePassingAnalysis(dir);
+    writeStwFile(dir, "STW-Workspace.md", "# W\n<!-- ATTACK_ZONE: src/* -->");
+    writeStwFile(dir, "planner-report.md",
+      "# 规划师报告\n\n## 结论\n\n**结论**: 需要调整\n"
+    );
+    startSession(dir);
+    advancePhase(dir); // 1→2
+    const result = advancePhase(dir); // 2→3
+    assert.equal(result.ok, false);
+    assert.ok(result.error.includes("需要调整"), "should mention 需要调整, got: " + result.error);
+  });
+
+  it("passes when planner verdict is '可以推进'", () => {
+    const dir = freshDir();
+    writePassingAnalysis(dir);
+    writeStwFile(dir, "STW-Workspace.md", "# W\n<!-- ATTACK_ZONE: src/* -->");
+    writePassingPlannerReport(dir);
+    startSession(dir);
+    advancePhase(dir); // 1→2
+    const result = advancePhase(dir); // 2→3
+    assert.equal(result.ok, true);
+    assert.equal(result.phase.id, 3);
+  });
+
+  it("honors full-width colon '：' in conclusion line", () => {
+    const dir = freshDir();
+    writePassingAnalysis(dir);
+    writeStwFile(dir, "STW-Workspace.md", "# W\n<!-- ATTACK_ZONE: src/* -->");
+    writeStwFile(dir, "planner-report.md",
+      "# 规划师报告\n\n## 结论\n\n**结论**：可以推进\n"
+    );
+    startSession(dir);
+    advancePhase(dir); // 1→2
+    const result = advancePhase(dir); // 2→3
+    assert.equal(result.ok, true);
+  });
+
+  it("skips gate when config.plannerReviewer.enabled=false", () => {
+    const dir = freshDir();
+    writePassingAnalysis(dir);
+    writeStwFile(dir, "STW-Workspace.md", "# W\n<!-- ATTACK_ZONE: src/* -->");
+    writeStwFile(dir, "config.json", JSON.stringify({ plannerReviewer: { enabled: false } }));
+    // no planner-report.md
+    startSession(dir);
+    advancePhase(dir); // 1→2
+    const result = advancePhase(dir); // 2→3
+    assert.equal(result.ok, true);
+    assert.equal(result.phase.id, 3);
+  });
+
+  it("ignores conclusion inside HTML comment", () => {
+    const dir = freshDir();
+    writePassingAnalysis(dir);
+    writeStwFile(dir, "STW-Workspace.md", "# W\n<!-- ATTACK_ZONE: src/* -->");
+    // The literal '**结论**: 可以推进' appears only inside a comment — should be treated as unfilled.
+    writeStwFile(dir, "planner-report.md",
+      "# 规划师报告\n\n## 结论\n\n<!-- 示例：**结论**: 可以推进 -->\n\n**结论**:\n"
+    );
+    startSession(dir);
+    advancePhase(dir); // 1→2
+    const result = advancePhase(dir); // 2→3
+    assert.equal(result.ok, false, "should block when only commented verdict; got ok=true");
+  });
+});
+
+describe("State Machine — reviewer gate (phase 4→5)", () => {
+  function setupThroughPhase4(dir) {
+    writePassingAnalysis(dir);
+    writeStwFile(dir, "STW-Workspace.md", "# W\n<!-- ATTACK_ZONE: src/* -->");
+    writePassingPlannerReport(dir);
+    writeStwFile(dir, "lockdown.json", "{}");
+    writeStwFile(dir, "test-results.json", '{"passed":true}');
+    startSession(dir);
+    advancePhase(dir); // 1→2
+    advancePhase(dir); // 2→3
+    advancePhase(dir); // 3→4
+  }
+
+  it("blocks when reviewer-report.md is missing", () => {
+    const dir = freshDir();
+    setupThroughPhase4(dir);
+    const result = advancePhase(dir); // 4→5
+    assert.equal(result.ok, false);
+    assert.ok(result.error.includes("审查员报告"), "should mention 审查员报告, got: " + result.error);
+  });
+
+  it("blocks when reviewer verdict is '不通过'", () => {
+    const dir = freshDir();
+    setupThroughPhase4(dir);
+    writeStwFile(dir, "reviewer-report.md",
+      "# 审查员报告\n\n## 结论\n\n**结论**: 不通过\n"
+    );
+    const result = advancePhase(dir); // 4→5
+    assert.equal(result.ok, false);
+    assert.ok(result.error.includes("不通过"), "should mention 不通过, got: " + result.error);
+  });
+
+  it("passes when reviewer verdict is '通过'", () => {
+    const dir = freshDir();
+    setupThroughPhase4(dir);
+    writePassingReviewerReport(dir);
+    const result = advancePhase(dir); // 4→5
+    assert.equal(result.ok, true);
+    assert.equal(result.phase.id, 5);
+  });
+
+  it("passes when reviewer verdict is '有条件通过'", () => {
+    const dir = freshDir();
+    setupThroughPhase4(dir);
+    writeStwFile(dir, "reviewer-report.md",
+      "# 审查员报告\n\n## 结论\n\n**结论**: 有条件通过\n"
+    );
+    const result = advancePhase(dir); // 4→5
+    assert.equal(result.ok, true);
+  });
+
+  it("skips gate when config.plannerReviewer.enabled=false", () => {
+    const dir = freshDir();
+    writePassingAnalysis(dir);
+    writeStwFile(dir, "STW-Workspace.md", "# W\n<!-- ATTACK_ZONE: src/* -->");
+    writeStwFile(dir, "config.json", JSON.stringify({ plannerReviewer: { enabled: false } }));
+    writeStwFile(dir, "lockdown.json", "{}");
+    writeStwFile(dir, "test-results.json", '{"passed":true}');
+    startSession(dir);
+    advancePhase(dir); // 1→2
+    advancePhase(dir); // 2→3 (planner gate also skipped)
+    advancePhase(dir); // 3→4
+    const result = advancePhase(dir); // 4→5 no reviewer-report needed
+    assert.equal(result.ok, true);
   });
 });

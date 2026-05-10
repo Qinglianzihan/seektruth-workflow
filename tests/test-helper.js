@@ -55,3 +55,25 @@ export function writePassingAnalysis(dir) {
     "## 4.5 变更计划声明\n| src/app.js | fix | Fix the reported bug in the application entry. |\n"
   );
 }
+
+/**
+ * Write a minimal .stw/planner-report.md that passes the phase 2→3 gate.
+ */
+export function writePassingPlannerReport(dir) {
+  writeStwFile(dir, "planner-report.md",
+    "# 规划师报告\n\n" +
+    "## 主要矛盾\n测试任务的主要矛盾。\n\n" +
+    "## 结论\n\n**结论**: 可以推进\n"
+  );
+}
+
+/**
+ * Write a minimal .stw/reviewer-report.md that passes the phase 4→5 gate.
+ */
+export function writePassingReviewerReport(dir) {
+  writeStwFile(dir, "reviewer-report.md",
+    "# 审查员报告\n\n" +
+    "## 纪律检查\n所有修改在 ATTACK_ZONE 内。\n\n" +
+    "## 结论\n\n**结论**: 通过\n"
+  );
+}

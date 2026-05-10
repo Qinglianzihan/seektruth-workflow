@@ -25,6 +25,8 @@ describe("File Writer — basic output", () => {
       "Analysis-Template.md",
       "Summary-Template.md",
       "roadmap.md",
+      "planner-report.md",
+      "reviewer-report.md",
     ];
     for (const name of expected) {
       assert.ok(existsSync(join(dir, ".stw", name)), `missing: ${name}`);
@@ -75,6 +77,19 @@ describe("File Writer — basic output", () => {
     assert.ok("conflicts" in cfg);
     assert.ok("confidenceGate" in cfg);
     assert.equal(cfg.confidenceGate.threshold, 6);
+    assert.ok("plannerReviewer" in cfg);
+    assert.equal(cfg.plannerReviewer.enabled, true);
+  });
+
+  it("planner-report.md and reviewer-report.md contain the Anthropic provenance note", () => {
+    const dir = freshDir();
+    writeStwFiles(dir, EMPTY_ENV, EMPTY_CONFLICTS);
+    const planner = readFileSync(join(dir, ".stw", "planner-report.md"), "utf-8");
+    const reviewer = readFileSync(join(dir, ".stw", "reviewer-report.md"), "utf-8");
+    assert.ok(planner.includes("Anthropic"));
+    assert.ok(planner.includes("**结论**"));
+    assert.ok(reviewer.includes("Anthropic"));
+    assert.ok(reviewer.includes("**结论**"));
   });
 
   it("roadmap.md is written with cross-task handoff skeleton", () => {

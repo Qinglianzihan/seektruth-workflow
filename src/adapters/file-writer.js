@@ -168,6 +168,13 @@ export function writeStwFiles(rootDir, environment, conflicts) {
   const roadmap = readTemplate("roadmap.md");
   writeGeneratedStwFile(stwDir, "roadmap.md", roadmap);
 
+  // planner-report.md / reviewer-report.md —— Planner/Evaluator 门禁产出模板
+  // 阶段 2 由规划师 Agent 填写；阶段 4 由审查员 Agent 填写
+  const plannerReport = readTemplate("planner-report.md");
+  writeGeneratedStwFile(stwDir, "planner-report.md", plannerReport);
+  const reviewerReport = readTemplate("reviewer-report.md");
+  writeGeneratedStwFile(stwDir, "reviewer-report.md", reviewerReport);
+
   // 审查员 + 规划师 agent 定义文件（可选模板，不存在则跳过）
   const reviewerMd = join(TEMPLATES_DIR, "审查员.md");
   const reviewerClaudeMd = join(TEMPLATES_DIR, "审查员.claude.md");

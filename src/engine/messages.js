@@ -14,8 +14,8 @@ export const PHASE_STORIES = {
     quote: "研究任何过程，如果存在两个以上矛盾，就要全力找出主要矛盾。",
     source: "《矛盾论》",
     intro: "一个任务只有一个核心问题。现在你已经了解了全局，下一步是聚焦——用 ATTACK_ZONE 划定作战区域，告诉 AI 哪些文件可以改，哪些碰都不能碰。",
-    aiAction: "在 .stw/STW-Workspace.md 末尾添加 ATTACK_ZONE 声明，格式如下：\n\n  <!-- ATTACK_ZONE: src/你的文件 -->\n  <!-- ATTACK_ZONE: tests/你的测试 -->\n\n  这会告诉 AI：只有这些区域是战场，其他地方是雷区。",
-    nextStep: "声明好作战区域后：/stw next\n我会自动生成专注封锁清单。",
+    aiAction: "先让独立的「规划师」Agent 出具方案（Anthropic 讲的 Planner/Generator/Evaluator 分离）：\n  1. 用 templates/规划师.md 的角色 prompt 启一个独立会话\n  2. 喂给它调研报告，由它填写 .stw/planner-report.md\n  3. 结论必须是\"可以推进\"，否则门禁会阻断\n\n同时在 .stw/STW-Workspace.md 末尾添加 ATTACK_ZONE 声明：\n\n  <!-- ATTACK_ZONE: src/你的文件 -->\n  <!-- ATTACK_ZONE: tests/你的测试 -->",
+    nextStep: "规划师报告就绪 + ATTACK_ZONE 声明好后：/stw next\n我会校验结论行，只有\"可以推进\"才放行到阶段 3。",
   },
   3: {
     title: "集中优势兵力",
@@ -29,9 +29,9 @@ export const PHASE_STORIES = {
     title: "实践检验",
     quote: "实践是检验真理的唯一标准。",
     source: "《实践论》",
-    intro: "代码改了，测试跑了。但别急着收工——实践是检验真理的唯一标准。这步会有审查员独立审查你的修改，还会提醒你做人工核查。AI 也会犯错，不能盲目信任。",
-    aiAction: "创建一个测试结果文件 .stw/test-results.json：\n  {\"total\": N, \"passed\": N, \"failed\": 0}\n  然后找审查员（另一个 AI）独立审查代码修改。",
-    nextStep: "审查通过 + 测试无误后：/stw next\n我会列出人工核查清单，请你逐项确认。",
+    intro: "代码改了，测试跑了。但别急着收工——实践是检验真理的唯一标准。这步有两道硬门禁：测试必须通过，独立审查员必须签字。AI 自审自检会系统性给正面评价（Anthropic 原话），所以审查必须由另一个 Agent 出具。",
+    aiAction: "两件事并行：\n  1. 创建测试结果文件 .stw/test-results.json：\n     {\"total\": N, \"passed\": N, \"failed\": 0}\n  2. 用 templates/审查员.md 的角色 prompt 启一个独立会话，由它填写 .stw/reviewer-report.md\n     结论必须是\"通过\"或\"有条件通过\"——写\"不通过\"门禁会拦住",
+    nextStep: "测试 + 审查员报告就绪后：/stw next\n我会校验结论行，只有\"通过\"或\"有条件通过\"才放行到阶段 5。",
   },
   5: {
     title: "总结与转化",

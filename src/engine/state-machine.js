@@ -94,6 +94,63 @@ function deliverableExists(rootDir, deliverable) {
   return existsSync(filePath);
 }
 
+/**
+ * Extract the 结论 (conclusion) line from a planner/reviewer report.
+ * Strips HTML comments first so that placeholder comments don't leak into the match.
+ * Returns the verdict phrase (trimmed) or null when no non-comment conclusion exists.
+ */
+function readConclusion(rootDir, fileName) {
+  const path = join(rootDir, ".stw", fileName);
+  if (!existsSync(path)) return { exists: false, conclusion: null };
+  const raw = readFileSync(path, "utf-8");
+  const stripped = raw.replace(/<!--[\s\S]*?-->/g, "");
+  const match = stripped.match(/\*\*结论\*\*[ \t]*[:：][ \t]*([^\n]*)/);
+  if (!match) return { exists: true, conclusion: null };
+  const conclusion = match[1].trim();
+  return { exists: true, conclusion: conclusion.length > 0 ? conclusion : null };
+}
+
+export function checkPlannerReport(rootDir) {
+  const { exists, conclusion } = readConclusion(rootDir, "planner-report.md");
+  if (!exists) {
+    return { ok: false, missing: true, error: "规划师报告 .stw/planner-report.md 尚未生成" };
+  }
+  if (!conclusion) {
+    return { ok: false, error: '规划师报告的 "**结论**" 行为空或只有占位注释——请填入 "可以推进" 或 "需要调整"' };
+  }
+  if (conclusion.includes("可以推进")) return { ok: true, conclusion };
+  if (conclusion.includes("需要调整")) {
+    return { ok: false, conclusion, error: '规划师判定 "需要调整"——请先回阶段 1 修订调研后重新规划' };
+  }
+  return { ok: false, conclusion, error: `规划师结论 "${conclusion}" 不在允许集合（可以推进 / 需要调整）内` };
+}
+
+export function checkReviewerReport(rootDir) {
+  const { exists, conclusion } = readConclusion(rootDir, "reviewer-report.md");
+  if (!exists) {
+    return { ok: false, missing: true, error: "审查员报告 .stw/reviewer-report.md 尚未生成" };
+  }
+  if (!conclusion) {
+    return { ok: false, error: '审查员报告的 "**结论**" 行为空或只有占位注释——请填入 "通过" / "有条件通过" / "不通过"' };
+  }
+  if (conclusion.includes("不通过")) {
+    return { ok: false, conclusion, error: '审查员判定 "不通过"——请修复问题后重新审查' };
+  }
+  if (conclusion.includes("通过")) return { ok: true, conclusion };
+  return { ok: false, conclusion, error: `审查员结论 "${conclusion}" 不在允许集合（通过 / 有条件通过 / 不通过）内` };
+}
+
+function plannerReviewerEnabled(rootDir) {
+  const configPath = join(rootDir, ".stw", "config.json");
+  if (!existsSync(configPath)) return true;
+  try {
+    const config = JSON.parse(readFileSync(configPath, "utf-8"));
+    return config.plannerReviewer?.enabled !== false;
+  } catch {
+    return true;
+  }
+}
+
 export function advancePhase(rootDir) {
   const progress = readProgress(rootDir);
   if (!progress) {
@@ -142,6 +199,18 @@ export function advancePhase(rootDir) {
     }
   }
 
+  // Planner gate: phase 2→3 — require independent 规划师 report (Anthropic: Planner ≠ Generator)
+  if (progress.phase === 2 && plannerReviewerEnabled(rootDir)) {
+    const planner = checkPlannerReport(rootDir);
+    if (!planner.ok) {
+      return {
+        ok: false,
+        error: planner.error,
+        required: '由独立的「规划师」Agent 填写 .stw/planner-report.md，并在 "**结论**:" 行写入 "可以推进"。',
+      };
+    }
+  }
+
   // File bounds + change plan + deps: phase 3→4
   if (progress.phase === 3) {
     const bounds = checkFileBounds(rootDir);
@@ -173,6 +242,18 @@ export function advancePhase(rootDir) {
     const deps = checkDepsChange(rootDir);
     if (deps.warning) {
       console.log(`\n  ⚠️  ${deps.warning}`);
+    }
+  }
+
+  // Reviewer gate: phase 4→5 — require independent 审查员 report (Anthropic: Evaluator ≠ Generator)
+  if (progress.phase === 4 && plannerReviewerEnabled(rootDir)) {
+    const reviewer = checkReviewerReport(rootDir);
+    if (!reviewer.ok) {
+      return {
+        ok: false,
+        error: reviewer.error,
+        required: '由独立的「审查员」Agent 填写 .stw/reviewer-report.md，并在 "**结论**:" 行写入 "通过" 或 "有条件通过"。',
+      };
     }
   }
 
