@@ -30,19 +30,29 @@ export function writeFile(dir, relPath, content) {
 /**
  * Write a minimal Analysis-Template.md that passes the confidence gate (score ≥ 6).
  * Each section needs >20 chars of non-comment content.
+ * Note: deliberately does NOT write .stw/.progress.json. This makes
+ * assessConfidence skip the "有的放矢" (targeted-aim) check in test fixtures
+ * that only care about the 14 structural steps, preserving backward
+ * compatibility with existing assertions.
  */
 export function writePassingAnalysis(dir) {
   writeStwFile(dir, "Analysis-Template.md",
     "## 0. 战前评估\n8/10\n\n" +
     "## 0.5 需求澄清 — 向用户提问\nQuestions for the user about what they really need.\n\n" +
+    "| # | 问题 | 用户回答 |\n" +
+    "| :--- | :--- | :--- |\n" +
+    "| 1 | 要做到多深？ | 完整实现 |\n\n" +
     "## 1. 任务背景\nThis is a test task background describing the problem to solve in enough detail.\n\n" +
     "## 1.0 表层需求 → 深层需求（透过现象看本质）\nUser said fix the bug. Actually need to understand root cause and hidden constraints.\n\n" +
     "## 1.5 项目风格侦察（从群众中来）\nScanned the project and found consistent patterns in naming, imports, and error handling throughout.\n\n" +
-    "## 1.6 外部调研 — 最佳实践与前人成果\nResearched similar implementations and found established patterns to follow.\n\n" +
     "| 维度 | 既有模式 | 示例出处 |\n" +
     "| :--- | :--- | :--- |\n" +
     "| 命名规范 | camelCase functions | (state-machine.js:34) |\n" +
     "| 导入风格 | ESM imports | (state-machine.js:1) |\n\n" +
+    "## 1.6 外部调研 — 最佳实践与前人成果\nResearched similar implementations and found established patterns to follow.\n\n" +
+    "| 方向 | 搜索结果 | 可借鉴的点 |\n" +
+    "| :--- | :--- | :--- |\n" +
+    "| 毛选原典 | 《反对本本主义》原话 | 表格行强检 + 关键词对齐 |\n\n" +
     "## 2. 认知分析六步法\n\n" +
     "### 2.1 去粗 — 过滤噪音\nSome meaningful filtered content about relevant files goes here.\n\n" +
     "### 2.2 取精 — 提取精华\nKey architectural decisions and hidden constraints discovered during analysis.\n\n" +
