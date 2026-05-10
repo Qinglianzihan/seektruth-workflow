@@ -44,7 +44,7 @@
 | :--- | :--- | :--- | :--- | :--- |
 | | | | | |
 
-*以上错误将自动存档到 .stw/error-registry.json，供未来会话参考。*
+*stw report 归档时，表格中每条非空行会自动 logError 入库 .stw/error-registry.json；下次 stw start 时若任务描述与标签/描述相关，会被检索并注入到 Analysis-Template.md 顶部。*
 
 ---
 

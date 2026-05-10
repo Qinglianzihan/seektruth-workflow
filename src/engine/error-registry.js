@@ -83,6 +83,50 @@ export function getAllErrors(rootDir) {
 }
 
 /**
+ * 从任务描述中提取用于检索的关键词。
+ * 策略：抽取英文单词 (≥2 字符) + 中文按标点/空格分段后的 2-4 字片段。
+ * 去重、小写化、长度筛选。
+ */
+export function extractKeywords(text) {
+  if (!text || typeof text !== "string") return [];
+  const seen = new Set();
+  const out = [];
+
+  const englishWords = text.match(/[A-Za-z][A-Za-z0-9_-]{1,}/g) || [];
+  for (const w of englishWords) {
+    const k = w.toLowerCase();
+    if (k.length >= 2 && !seen.has(k)) {
+      seen.add(k);
+      out.push(k);
+    }
+  }
+
+  const cjkSegments = text.match(/[一-鿿]{2,}/g) || [];
+  for (const seg of cjkSegments) {
+    for (let len = 2; len <= 4; len++) {
+      for (let i = 0; i + len <= seg.length; i++) {
+        const k = seg.slice(i, i + len);
+        if (!seen.has(k)) {
+          seen.add(k);
+          out.push(k);
+        }
+      }
+    }
+  }
+
+  return out;
+}
+
+/**
+ * 基于任务描述检索相关病例（治病救人闭环的"查找相似病例"入口）。
+ */
+export function findRelatedErrorsByTask(rootDir, taskDescription, limit = 3) {
+  const keywords = extractKeywords(taskDescription);
+  if (keywords.length === 0) return [];
+  return getRelatedErrors(rootDir, keywords, limit);
+}
+
+/**
  * Produce summary insights: count, top tags, recent entries.
  */
 export function getErrorInsights(rootDir) {

@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { freshDir } from "../test-helper.js";
-import { logError, getRelatedErrors, getErrorInsights } from "../../src/engine/error-registry.js";
+import { logError, getRelatedErrors, getErrorInsights, extractKeywords, findRelatedErrorsByTask } from "../../src/engine/error-registry.js";
 
 const REGISTRY_PATH = ".stw/error-registry.json";
 
@@ -158,5 +158,79 @@ describe("getErrorInsights", () => {
     assert.ok(insights.topTags.indexOf("auth") < insights.topTags.indexOf("parse"));
     assert.ok(insights.topTags.indexOf("timeout") < insights.topTags.indexOf("parse"));
     assert.equal(insights.recent.length, 3);
+  });
+});
+
+describe("extractKeywords", () => {
+  it("returns empty for empty / non-string input", () => {
+    assert.deepEqual(extractKeywords(""), []);
+    assert.deepEqual(extractKeywords(null), []);
+    assert.deepEqual(extractKeywords(undefined), []);
+    assert.deepEqual(extractKeywords(42), []);
+  });
+
+  it("extracts lowercased English words ≥2 chars, deduped", () => {
+    const kws = extractKeywords("Fix PostToolUse hook hook error in stw hook");
+    assert.ok(kws.includes("fix"));
+    assert.ok(kws.includes("posttooluse"));
+    assert.ok(kws.includes("hook"));
+    assert.ok(kws.includes("stw"));
+    // deduped
+    assert.equal(kws.filter((k) => k === "hook").length, 1);
+  });
+
+  it("extracts 2-4 char CJK substrings from Chinese segments", () => {
+    const kws = extractKeywords("修复 Claude Code 钩子格式错误");
+    // Has English word + CJK slices
+    assert.ok(kws.includes("claude"));
+    assert.ok(kws.includes("code"));
+    assert.ok(kws.includes("钩子格式"));
+    assert.ok(kws.includes("格式错误"));
+    assert.ok(kws.includes("钩子"));
+  });
+});
+
+describe("findRelatedErrorsByTask", () => {
+  it("returns empty when task description is empty", () => {
+    const dir = freshDir();
+    logError(dir, { description: "Something happened" });
+    assert.deepEqual(findRelatedErrorsByTask(dir, ""), []);
+    assert.deepEqual(findRelatedErrorsByTask(dir, null), []);
+  });
+
+  it("finds English-keyword matches from task description", () => {
+    const dir = freshDir();
+    logError(dir, { description: "Hook configuration error", tags: ["hook"] });
+    logError(dir, { description: "Network timeout issue", tags: ["network"] });
+
+    const results = findRelatedErrorsByTask(dir, "Fix Claude Code hook format");
+    assert.equal(results.length, 1);
+    assert.equal(results[0].description, "Hook configuration error");
+  });
+
+  it("finds CJK-keyword matches from task description", () => {
+    const dir = freshDir();
+    logError(dir, { description: "钩子格式错误：hooks 数组缺失", tags: ["hook"] });
+    logError(dir, { description: "网络超时", tags: ["network"] });
+
+    const results = findRelatedErrorsByTask(dir, "T6 修复 钩子格式 相关问题");
+    assert.equal(results.length, 1);
+    assert.ok(results[0].description.includes("钩子"));
+  });
+
+  it("respects the limit parameter", () => {
+    const dir = freshDir();
+    for (let i = 0; i < 5; i++) {
+      logError(dir, { description: `Hook error ${i}`, tags: ["hook"] });
+    }
+    const results = findRelatedErrorsByTask(dir, "hook", 2);
+    assert.equal(results.length, 2);
+  });
+
+  it("returns empty when no entries share keywords with task", () => {
+    const dir = freshDir();
+    logError(dir, { description: "Unrelated parser bug" });
+    const results = findRelatedErrorsByTask(dir, "network timeout issue");
+    assert.deepEqual(results, []);
   });
 });

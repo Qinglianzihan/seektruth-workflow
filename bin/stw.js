@@ -17,10 +17,11 @@ import { getCurrentPhase, PHASES, startSession, advancePhase, abortSession, roll
 import { generateLockdown, checkDirtyTree } from "../src/engine/lockdown.js";
 import { archiveReport, listReports, getRecentSummaries } from "../src/engine/report.js";
 import { getStats, generateStatsReport, logTokens, logGateResult } from "../src/engine/stats.js";
-import { getRelatedErrors, getAllErrors } from "../src/engine/error-registry.js";
+import { getRelatedErrors, getAllErrors, findRelatedErrorsByTask } from "../src/engine/error-registry.js";
 import { deepScanMcp } from "../src/scout/mcp-deep-scanner.js";
 import { runCheck, listGates } from "../src/engine/check.js";
 import { runHook } from "../src/engine/hook.js";
+import { injectSimilarCases } from "../src/engine/analysis-injector.js";
 import { ratchetError, getRatchetRules, removeRatchetRule } from "../src/engine/ratchet.js";
 import { injectQuote } from "../src/engine/quote-injector.js";
 import { PHASE_STORIES, ERROR_FRIENDLY, STATUS_EMPTY, RATCHET_ADDED, RATCHET_REMOVED, RATCHET_EMPTY, ATTACK_ZONE_CLEANUP_HINT } from "../src/engine/messages.js";
@@ -259,13 +260,19 @@ const cmdStart = () => {
       console.log("");
     }
 
-    // 历史病历
-    const recentErrors = getRelatedErrors(rootDir, [], 3);
-    if (recentErrors.length > 0) {
+    // 历史病历：按当前任务描述检索相似病例，命中后注入 Analysis-Template.md 顶部
+    const relatedErrors = taskDescription
+      ? findRelatedErrorsByTask(rootDir, taskDescription, 3)
+      : getRelatedErrors(rootDir, [], 3);
+    const injectResult = injectSimilarCases(rootDir, relatedErrors);
+    if (relatedErrors.length > 0) {
       console.log("🏥 之前踩过的坑（别重蹈覆辙）：");
-      for (const e of recentErrors) {
+      for (const e of relatedErrors) {
         console.log(`   · ${e.description}`);
         if (e.resolution) console.log(`     → ${e.resolution}`);
+      }
+      if (injectResult.ok && injectResult.injected > 0) {
+        console.log(`   （已注入到 .stw/Analysis-Template.md 顶部，AI 填分析时会自动看到）`);
       }
       console.log("");
     }
@@ -448,6 +455,9 @@ const cmdReport = () => {
     const allReports = listReports(rootDir);
     console.log(`\n📝 总结报告已存档: ${result.name}`);
     console.log(`   存档数量: ${allReports.length}`);
+    if (result.ingested > 0) {
+      console.log(`   已从 Summary 入库 ${result.ingested} 条错误病例 → .stw/error-registry.json`);
+    }
   } catch (err) {
     console.error(`\n❌ report 失败: ${err.message}`);
     process.exit(1);

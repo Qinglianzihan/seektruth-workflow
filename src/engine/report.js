@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, writeFileSync, readdirSync, mkdirSync, copyFileSync } from "node:fs";
 import { join } from "node:path";
+import { logError } from "./error-registry.js";
 
 const REPORTS_DIR = ".stw/reports";
 
@@ -35,7 +36,64 @@ export function archiveReport(rootDir) {
 
   copyFileSync(summaryPath, reportPath);
 
-  return { ok: true, path: reportPath, name: reportName };
+  const cases = parseSummaryErrorCases(content);
+  let ingested = 0;
+  for (const c of cases) {
+    logError(rootDir, c);
+    ingested += 1;
+  }
+
+  return { ok: true, path: reportPath, name: reportName, ingested };
+}
+
+/**
+ * 解析 Summary-Template.md 第 6 节"错误病例"表格。
+ * 表头：| 阶段 | 错误描述 | 根因 | 解决方案 | 标签 |
+ * 返回可直接喂给 logError 的数组；空行/占位符自动跳过。
+ */
+export function parseSummaryErrorCases(content) {
+  if (!content) return [];
+  const headingMatch = content.match(/(^|\n)## 6\. 错误病例(\n|$)/);
+  if (!headingMatch) return [];
+  const sectionIdx = headingMatch.index + (headingMatch[1] ? 1 : 0);
+  const nextSection = content.indexOf("\n## ", sectionIdx + 2);
+  const section = content.slice(
+    sectionIdx,
+    nextSection !== -1 ? nextSection : content.length,
+  );
+
+  const cases = [];
+  let headerSkipped = false;
+  for (const rawLine of section.split("\n")) {
+    const line = rawLine.trim();
+    if (!line.startsWith("|") || !line.endsWith("|")) continue;
+    // Skip the first header row (heuristic: contains both column names)
+    if (!headerSkipped && line.includes("阶段") && line.includes("错误描述")) {
+      headerSkipped = true;
+      continue;
+    }
+    // Skip separator rows (e.g. | :--- | :--- | ...)
+    if (/^\|[\s:|-]+\|$/.test(line)) continue;
+
+    const cells = line.slice(1, -1).split("|").map((c) => c.trim());
+    if (cells.length < 5) continue;
+    const [phaseCell, desc, rootCause, resolution, tagsCell] = cells;
+    if (!desc) continue;
+
+    const phaseMatch = phaseCell.match(/\d+/);
+    const tags = tagsCell
+      ? tagsCell.split(/[,，、\s]+/).map((t) => t.trim()).filter(Boolean)
+      : [];
+
+    cases.push({
+      phase: phaseMatch ? parseInt(phaseMatch[0], 10) : 0,
+      description: desc,
+      rootCause: rootCause || "",
+      resolution: resolution || "",
+      tags,
+    });
+  }
+  return cases;
 }
 
 /**
