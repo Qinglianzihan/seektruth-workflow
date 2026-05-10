@@ -297,6 +297,39 @@ export function writeStwFiles(rootDir, environment, conflicts) {
     }
   }
 
+  function upsertClaudeSettings(projectRoot) {
+    const settingsPath = join(projectRoot, ".claude", "settings.json");
+    mkdirSync(dirname(settingsPath), { recursive: true });
+
+    let settings = {};
+    if (existsSync(settingsPath)) {
+      try {
+        settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
+        if (!settings || typeof settings !== "object") settings = {};
+      } catch {
+        // Malformed settings.json — skip injection rather than clobber user data.
+        return;
+      }
+    }
+
+    if (!settings.hooks || typeof settings.hooks !== "object") settings.hooks = {};
+    if (!Array.isArray(settings.hooks.PostToolUse)) settings.hooks.PostToolUse = [];
+
+    const STW_COMMAND_MARKER = "stw hook run";
+    const alreadyInstalled = settings.hooks.PostToolUse.some((matcher) =>
+      Array.isArray(matcher?.hooks) &&
+      matcher.hooks.some((h) => typeof h?.command === "string" && h.command.includes(STW_COMMAND_MARKER))
+    );
+    if (alreadyInstalled) return;
+
+    settings.hooks.PostToolUse.push({
+      matcher: "Edit|Write|MultiEdit",
+      hooks: [{ type: "command", command: "stw hook run --event PostToolUse" }],
+    });
+
+    writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + "\n");
+  }
+
   for (const tool of environment.aiTools) {
     const cfg = TOOL_BOOTSTRAPS[tool.name];
     if (!cfg) continue;
@@ -313,6 +346,9 @@ export function writeStwFiles(rootDir, environment, conflicts) {
       if (existsSync(skillTemplate)) {
         copyFileSync(skillTemplate, join(skillsDir, "stw.md"));
       }
+
+      // PostToolUse hook: lint + phase≥3 attack-zone check, silent success
+      upsertClaudeSettings(rootDir);
     }
   }
 

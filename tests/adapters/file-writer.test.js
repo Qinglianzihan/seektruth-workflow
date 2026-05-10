@@ -325,3 +325,90 @@ describe("File Writer — Claude Code integration", () => {
     assert.ok(readFileSync(path, "utf-8").includes("STW 工作流规范"));
   });
 });
+
+describe("File Writer — Claude Code PostToolUse hook injection", () => {
+  const claudeEnv = {
+    project: null,
+    aiTools: [{ name: "Claude Code", source: "test" }],
+    mcpConfigs: [],
+    skills: [],
+  };
+
+  it("creates .claude/settings.json with stw hook run command", () => {
+    const dir = freshDir();
+    writeStwFiles(dir, claudeEnv, EMPTY_CONFLICTS);
+    const settingsPath = join(dir, ".claude", "settings.json");
+    assert.ok(existsSync(settingsPath), "settings.json should be created");
+    const settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
+    assert.ok(Array.isArray(settings.hooks?.PostToolUse));
+    const matcher = settings.hooks.PostToolUse[0];
+    assert.ok(matcher.matcher.includes("Edit") && matcher.matcher.includes("Write"));
+    assert.ok(Array.isArray(matcher.hooks));
+    assert.equal(matcher.hooks[0].type, "command");
+    assert.ok(matcher.hooks[0].command.includes("stw hook run"));
+  });
+
+  it("preserves existing user settings when injecting", () => {
+    const dir = freshDir();
+    const existing = {
+      permissions: { allow: ["Bash(ls:*)"] },
+      env: { DEBUG: "1" },
+      hooks: {
+        SessionStart: [{ matcher: "", hooks: [{ type: "command", command: "echo hi" }] }],
+      },
+    };
+    writeFile(dir, ".claude/settings.json", JSON.stringify(existing, null, 2));
+    writeStwFiles(dir, claudeEnv, EMPTY_CONFLICTS);
+    const merged = JSON.parse(readFileSync(join(dir, ".claude", "settings.json"), "utf-8"));
+    assert.deepEqual(merged.permissions, existing.permissions);
+    assert.deepEqual(merged.env, existing.env);
+    assert.equal(merged.hooks.SessionStart[0].hooks[0].command, "echo hi");
+    assert.ok(merged.hooks.PostToolUse.some((m) =>
+      m.hooks.some((h) => h.command.includes("stw hook run"))
+    ));
+  });
+
+  it("is idempotent — second init does not duplicate hook entry", () => {
+    const dir = freshDir();
+    writeStwFiles(dir, claudeEnv, EMPTY_CONFLICTS);
+    writeStwFiles(dir, claudeEnv, EMPTY_CONFLICTS);
+    const settings = JSON.parse(readFileSync(join(dir, ".claude", "settings.json"), "utf-8"));
+    const stwHooks = settings.hooks.PostToolUse.filter((m) =>
+      m.hooks.some((h) => h.command.includes("stw hook run"))
+    );
+    assert.equal(stwHooks.length, 1);
+  });
+
+  it("coexists with an existing PostToolUse entry (different command)", () => {
+    const dir = freshDir();
+    const existing = {
+      hooks: {
+        PostToolUse: [
+          { matcher: "Edit", hooks: [{ type: "command", command: "my-own-formatter" }] },
+        ],
+      },
+    };
+    writeFile(dir, ".claude/settings.json", JSON.stringify(existing, null, 2));
+    writeStwFiles(dir, claudeEnv, EMPTY_CONFLICTS);
+    const merged = JSON.parse(readFileSync(join(dir, ".claude", "settings.json"), "utf-8"));
+    assert.equal(merged.hooks.PostToolUse.length, 2);
+    assert.ok(merged.hooks.PostToolUse[0].hooks[0].command.includes("my-own-formatter"));
+    assert.ok(merged.hooks.PostToolUse[1].hooks[0].command.includes("stw hook run"));
+  });
+
+  it("does not create settings.json when Claude Code not detected", () => {
+    const dir = freshDir();
+    const env = { project: null, aiTools: [{ name: "Codex CLI", source: "test" }], mcpConfigs: [], skills: [] };
+    writeStwFiles(dir, env, EMPTY_CONFLICTS);
+    assert.ok(!existsSync(join(dir, ".claude", "settings.json")));
+  });
+
+  it("skips injection when settings.json is malformed JSON", () => {
+    const dir = freshDir();
+    writeFile(dir, ".claude/settings.json", "{ this is not json");
+    writeStwFiles(dir, claudeEnv, EMPTY_CONFLICTS);
+    // File left untouched — we don't clobber user data
+    const content = readFileSync(join(dir, ".claude", "settings.json"), "utf-8");
+    assert.equal(content, "{ this is not json");
+  });
+});

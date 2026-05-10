@@ -20,6 +20,7 @@ import { getStats, generateStatsReport, logTokens, logGateResult } from "../src/
 import { getRelatedErrors, getAllErrors } from "../src/engine/error-registry.js";
 import { deepScanMcp } from "../src/scout/mcp-deep-scanner.js";
 import { runCheck, listGates } from "../src/engine/check.js";
+import { runHook } from "../src/engine/hook.js";
 import { ratchetError, getRatchetRules, removeRatchetRule } from "../src/engine/ratchet.js";
 import { injectQuote } from "../src/engine/quote-injector.js";
 import { PHASE_STORIES, ERROR_FRIENDLY, STATUS_EMPTY, RATCHET_ADDED, RATCHET_REMOVED, RATCHET_EMPTY, ATTACK_ZONE_CLEANUP_HINT } from "../src/engine/messages.js";
@@ -47,6 +48,7 @@ const help = () => {
   console.log("  repair         修复/重新生成 .stw 文件");
   console.log("  stats          查看统计报告");
   console.log("  check          运行所有质量门禁 (lint + ratchet + test)");
+  console.log("  hook run       由 AI 工具 hook 触发的轻量体检（lint + 阶段 3+ 范围检查）");
   console.log("  ratchet        管理 Ratchet 规则 (list/add/remove)");
   console.log("  forge          需求炼金炉：多 agent 需求讨论状态机");
 };
@@ -539,6 +541,35 @@ const cmdCheck = () => {
   }
 };
 
+const cmdHook = () => {
+  const rootDir = process.cwd();
+  const args = process.argv.slice(3);
+  const sub = args[0];
+
+  if (sub !== "run") {
+    console.log("用法: stw hook run [--event PostToolUse]");
+    console.log("");
+    console.log("由 AI 工具 hook 触发。静默成功（exit 0），失败时 exit 2 + stderr 注入给 agent。");
+    return;
+  }
+
+  let event = "PostToolUse";
+  const eventIdx = args.indexOf("--event");
+  if (eventIdx !== -1 && args[eventIdx + 1]) event = args[eventIdx + 1];
+
+  let result;
+  try {
+    result = runHook({ rootDir, event });
+  } catch (err) {
+    process.stderr.write(`[stw hook] 内部错误: ${err.message}\n`);
+    process.exit(2);
+    return;
+  }
+
+  if (result.stderr) process.stderr.write(result.stderr + "\n");
+  process.exit(result.exitCode);
+};
+
 const cmdForge = async () => {
   const rootDir = process.cwd();
   const args = process.argv.slice(3);
@@ -817,6 +848,9 @@ switch (command) {
     break;
   case "check":
     cmdCheck();
+    break;
+  case "hook":
+    cmdHook();
     break;
   case "ratchet":
     cmdRatchet();
