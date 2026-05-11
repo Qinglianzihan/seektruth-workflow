@@ -31,6 +31,7 @@ import { PHASE_STORIES, ERROR_FRIENDLY, STATUS_EMPTY, RATCHET_ADDED, RATCHET_REM
 import { startForge, getForgeStatus, inspectForgeAgent, advanceForge, acceptForge, abortForge, runForgeAgents, AGENTS } from "../src/engine/forge.js";
 import { detectDocDrift } from "../src/engine/doc-drift.js";
 import { auditConstraints, formatAuditOutput } from "../src/engine/audit.js";
+import { analyzeTraces, formatAnalyzeOutput } from "../src/engine/analyze.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8"));
@@ -58,6 +59,7 @@ const help = () => {
   console.log("  stop-hook run  Ralph Loop Stop hook：phase 1-4 拦退出，注入 stderr re-inject 原意");
   console.log("  replay         回放 .stw/events.jsonl 事件流 (--tail / --type / --task / --root-cause / --json)");
   console.log("  audit          审计五大核心约束在最近 N 任务的触发情况 (--limit N，默认 10; --min-tasks N，默认 3)");
+  console.log("  analyze        Trace analyzer：最近 N 任务失败模式归类 + predictionVerdict 趋势 (--limit N; --json)");
   console.log("  ratchet        管理 Ratchet 规则 (list/add/remove)");
   console.log("  forge          需求炼金炉：多 agent 需求讨论状态机");
 };
@@ -674,6 +676,37 @@ const cmdAudit = async () => {
   if (!result.ok) process.exit(1);
 };
 
+const cmdAnalyze = async () => {
+  const rootDir = process.cwd();
+  const args = process.argv.slice(3);
+  const limitIdx = args.indexOf("--limit");
+  let limit;
+  if (limitIdx !== -1) {
+    const raw = args[limitIdx + 1];
+    const parsed = parseInt(raw, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      console.error(`\n❌ --limit 需要一个 >= 1 的整数（收到 "${raw}"）`);
+      process.exit(1);
+    }
+    limit = parsed;
+  }
+  const asJson = args.includes("--json");
+  const opts = {};
+  if (limit !== undefined) opts.limit = limit;
+  const result = await analyzeTraces(rootDir, opts);
+  if (asJson) {
+    console.log(JSON.stringify(result, null, 2));
+  } else {
+    console.log(formatAnalyzeOutput(result));
+  }
+  appendEvent(rootDir, "analyze.run", {
+    actualTasks: result.window?.actualTasks ?? 0,
+    findingsCount: (result.findings || []).length,
+    skipped: Boolean(result.skipped),
+  });
+  if (!result.ok) process.exit(1);
+};
+
 const cmdReplay = async () => {
   const rootDir = process.cwd();
   const args = process.argv.slice(3);
@@ -1030,6 +1063,12 @@ switch (command) {
   case "audit":
     cmdAudit().catch((err) => {
       console.error(`\n❌ audit 失败: ${err.message}`);
+      process.exit(1);
+    });
+    break;
+  case "analyze":
+    cmdAnalyze().catch((err) => {
+      console.error(`\n❌ analyze 失败: ${err.message}`);
       process.exit(1);
     });
     break;

@@ -49,11 +49,11 @@ const PHASE_GATE_SUBTYPES = [
   "deliverable", "confidence", "planner", "bounds", "changePlan", "reviewer",
 ];
 
-function truncateTask(t) {
+export function truncateTask(t) {
   return (t || "").slice(0, 60);
 }
 
-function splitIntoSessions(events) {
+export function splitIntoSessions(events) {
   const sessions = [];
   let current = null;
   for (const ev of events) {
