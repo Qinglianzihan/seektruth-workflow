@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { sectionBody } from "./markdown-anchor.js";
 
 // 规划师 A1 建议：标题必须严格字面匹配，不能前缀匹配。
 // 历史归档存在 `## 7. 对 Roadmap 的再认识` 节，若用 `## 7` 前缀会把错误章节解析成 ledger。
@@ -7,25 +8,6 @@ const CHANGE_PLAN_MARKER = "## 4.5 变更计划声明";
 const EVIDENCE_LEDGER_MARKER = "## 7. 证据账本";
 const CONFIRMED_WORDS = new Set(["兑现", "confirmed"]);
 const MISMATCH_WORDS = new Set(["不兑现", "未兑现", "mismatch"]);
-
-function findSection(content, marker) {
-  const needle = "\n" + marker;
-  const idx = content.indexOf(needle);
-  if (idx !== -1) return idx + 1;
-  return content.startsWith(marker) ? 0 : -1;
-}
-
-function findNextSection(content, from) {
-  const m = content.slice(from).match(/\n## /);
-  return m ? from + m.index : content.length;
-}
-
-function sectionBody(content, marker) {
-  const idx = findSection(content, marker);
-  if (idx === -1) return null;
-  const endIdx = findNextSection(content, idx + marker.length);
-  return content.slice(idx + marker.length, endIdx);
-}
 
 function parseTableRows(sectionText, minCols) {
   const out = [];

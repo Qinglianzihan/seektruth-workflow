@@ -40,8 +40,12 @@ export function runStopHook({ rootDir, stdinPayload = "" } = {}, deps = {}) {
   const stopHookActive = parseStopHookActive(stdinPayload);
 
   if (stopHookActive) {
+    // T11 硬约束：stop_hook_active 分支不读 phase（防循环时最小 I/O）。
+    // T11.bis R5 诉求"埋 phase"在此约束下落实为 `phase: null` 显式字段，
+    // 让 replay 能区分"字段缺失"与"字段存在但设计上不读"。
     appendEvent(rootDir, "stop-hook.run", {
       exitCode: 0,
+      phase: null,
       reason: "stop_hook_active",
     });
     return { exitCode: 0, stderr: "" };
@@ -55,10 +59,14 @@ export function runStopHook({ rootDir, stdinPayload = "" } = {}, deps = {}) {
     typeof phase === "number" && BLOCKABLE_PHASES.includes(phase);
 
   if (!shouldBlock) {
+    const reason =
+      phase === 5 || phase === "complete"
+        ? "phase-complete"
+        : "phase-unknown";
     appendEvent(rootDir, "stop-hook.run", {
       exitCode: 0,
       phase: typeof phase === "number" || typeof phase === "string" ? phase : null,
-      reason: "phase-complete-or-inactive",
+      reason,
     });
     return { exitCode: 0, stderr: "" };
   }
@@ -66,8 +74,12 @@ export function runStopHook({ rootDir, stdinPayload = "" } = {}, deps = {}) {
   const phaseInfo = PHASES.find((p) => p.id === phase);
   const phaseName = phaseInfo?.name || `阶段 ${phase}`;
   const nextGuidance = buildNextGuidance(phase, current?.taskDescription);
+  const firstLine =
+    phase === 4
+      ? `[stw stop-hook] 任务尚未完成 —— 当前处于阶段 ${phase} (${phaseName})，仍需独立审查员签字，不要直接 Stop。`
+      : `[stw stop-hook] 任务尚未完成 —— 当前处于阶段 ${phase} (${phaseName})，五阶段门禁未全部通过。`;
   const lines = [
-    `[stw stop-hook] 任务尚未完成 —— 当前处于阶段 ${phase} (${phaseName})，五阶段门禁未全部通过。`,
+    firstLine,
     `不准半途而废（《中国革命战争的战略问题》"伤其十指不如断其一指"）。`,
     ``,
     nextGuidance,

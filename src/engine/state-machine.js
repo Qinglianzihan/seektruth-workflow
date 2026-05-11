@@ -286,15 +286,10 @@ export function advancePhase(rootDir) {
 
     const evidence = checkEvidence(rootDir);
     appendEvent(rootDir, "gate.evidence", {
-      ok: evidence.ok,
-      coverage: evidence.coverage,
-      total: evidence.total,
-      filled: evidence.filled,
-      missingCount: evidence.missing.length,
+      ok: evidence.ok, coverage: evidence.coverage, total: evidence.total,
+      filled: evidence.filled, missingCount: evidence.missing.length,
     });
-    if (evidence.warning) {
-      console.log(`\n  ⚠️  ${evidence.warning}`);
-    }
+    if (evidence.warning) console.log(`\n  ⚠️  ${evidence.warning}`);
   }
 
   // Reviewer gate: phase 4→5 — require independent 审查员 report (Anthropic: Evaluator ≠ Generator)

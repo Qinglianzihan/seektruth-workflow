@@ -146,7 +146,7 @@ function analyzeErrorRegistry(rootDir, window) {
     recent,
     byPhase,
     rationale: "《整顿党的作风》惩前毖后、治病救人",
-    empty: entries.length === 0,
+    empty: false,
   };
 }
 
@@ -257,7 +257,7 @@ function analyzeSessionLoad(window) {
   const perSession = window.map((s) => {
     const counts = Object.fromEntries(LOAD_TYPES.map((t) => [t, 0]));
     for (const e of s.events) {
-      if (e.type in counts) counts[e.type] += 1;
+      if (Object.prototype.hasOwnProperty.call(counts, e.type)) counts[e.type] += 1;
     }
     const total = Object.values(counts).reduce((a, b) => a + b, 0);
     return { task: truncateTask(s.task), total, counts };

@@ -275,4 +275,24 @@ describe("Evidence — checkEvidenceLedger (archive reconciliation)", () => {
     const filled = entries.filter((e) => e.predicted).length;
     assert.equal(filled, entries.length, "current T12 Analysis should have predicted column filled for every row");
   });
+
+  // T12.bis R4: checkEvidenceLedger 真实归档端到端 smoke
+  it("真实归档端到端 smoke: 把 T12+T15 归档符号链接到 Summary-Template.md，checkEvidenceLedger 正确解析", () => {
+    const dir = freshDir();
+    const reportsDir = join(REPO_ROOT, ".stw", "reports");
+    const t12Path = join(reportsDir, "summary-2026-05-11T13-36-57.md");
+    const t15Path = join(reportsDir, "summary-2026-05-11T15-54-50.md");
+
+    for (const src of [t12Path, t15Path]) {
+      const content = readFileSync(src, "utf-8");
+      writeStwFile(dir, "Summary-Template.md", content);
+      const v = checkEvidenceLedger(dir);
+      assert.ok(v.total > 0, `${src}: ledger 应非空，实际 total=${v.total}`);
+      assert.equal(
+        v.confirmed + v.mismatches.length + v.skipped,
+        v.total,
+        `${src}: confirmed + mismatches + skipped 必须等于 total`,
+      );
+    }
+  });
 });

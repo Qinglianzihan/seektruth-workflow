@@ -1,6 +1,9 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
+import { sectionBody } from "./markdown-anchor.js";
+
+const CHANGE_PLAN_MARKER = "## 4.5 变更计划声明";
 
 /**
  * Parse ATTACK_ZONE declarations from STW-Workspace.md.
@@ -150,12 +153,6 @@ export function checkFileBounds(rootDir) {
   };
 }
 
-/** Find end of a markdown section so we can read its body. */
-function findNextSection(content, from) {
-  const m = content.slice(from).match(/\n## /);
-  return m ? from + m.index : content.length;
-}
-
 /**
  * Parse change plan from Analysis-Template.md section "## 4.5 变更计划声明".
  * Returns [{ file, type, reason }].
@@ -165,12 +162,8 @@ export function parseChangePlan(rootDir) {
   if (!existsSync(analysisPath)) return [];
 
   const content = readFileSync(analysisPath, "utf-8");
-  const marker = "## 4.5 变更计划声明";
-  const idx = content.indexOf(marker);
-  if (idx === -1) return [];
-
-  const endIdx = findNextSection(content, idx + marker.length);
-  const section = content.slice(idx, endIdx);
+  const section = sectionBody(content, CHANGE_PLAN_MARKER);
+  if (section === null) return [];
 
   const entries = [];
   for (const line of section.split("\n")) {

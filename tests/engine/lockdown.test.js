@@ -152,6 +152,28 @@ describe("Lockdown — parseChangePlan", () => {
     assert.equal(plan[1].file, "tests/app.test.js");
   });
 
+  // T12 首发 / T15 复现的同型 indexOf bug：Analysis 先行章节包含字面
+  // `## 4.5 变更计划声明`（反引号内联或代码块），旧 indexOf 锚点把假标题
+  // 当真 §4.5 起点，导致下游 unplanned 误报。抽共享 util 后该 case 必须通过。
+  it("嵌反引号字面的 ## 4.5 不会被误当 §4.5 起点（T12/T15 两次实证根治）", () => {
+    const dir = freshDir();
+    const analysis = [
+      "## 2.3 引用段",
+      "历史上 `## 4.5 变更计划声明` 标题锚曾被 indexOf 撞中。",
+      "",
+      "## 4.5 变更计划声明",
+      "",
+      "| 文件 | 改动类型 | 理由 |",
+      "| :--- | :--- | :--- |",
+      "| src/真实.js | fix | real plan |",
+      "",
+    ].join("\n");
+    writeStwFile(dir, "Analysis-Template.md", analysis);
+    const plan = parseChangePlan(dir);
+    assert.equal(plan.length, 1, "反引号字面不应污染解析");
+    assert.equal(plan[0].file, "src/真实.js");
+  });
+
   it("returns empty array when Analysis-Template.md missing", () => {
     const dir = freshDir();
     assert.deepEqual(parseChangePlan(dir), []);

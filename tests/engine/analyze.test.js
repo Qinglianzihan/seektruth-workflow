@@ -405,3 +405,54 @@ describe("analyze — JSON output is valid JSON", () => {
     rmSync(dir, { recursive: true, force: true });
   });
 });
+
+// T15.bis R3: formatAnalyzeOutput 的 empty state 字符串「✓ 无热点」未被直测
+describe("formatAnalyzeOutput — T15.bis R3 empty state 直测", () => {
+  it("单个 finding 的 empty:true 分支产出 '✓ 无热点'", () => {
+    const result = {
+      ok: true,
+      window: { limit: 10, actualTasks: 1, taskDescriptions: ["t"], note: "(n)" },
+      findings: [
+        {
+          id: "gate-denied-hotspots",
+          label: "label A",
+          detail: "nothing",
+          topItems: [],
+          empty: true,
+          rationale: "r",
+        },
+      ],
+    };
+    const out = formatAnalyzeOutput(result);
+    assert.ok(out.includes("✓ 无热点"), `expected '✓ 无热点' in output, got:\n${out}`);
+    assert.ok(out.includes("label A"));
+  });
+
+  it("empty:false + topItems 非空时走 Top-N 渲染分支（不出 '✓ 无热点'）", () => {
+    const result = {
+      ok: true,
+      window: { limit: 10, actualTasks: 1, taskDescriptions: ["t"], note: "(n)" },
+      findings: [
+        {
+          id: "x",
+          label: "label B",
+          detail: "d",
+          topItems: [{ key: "k1", count: 3 }],
+          empty: false,
+          rationale: "r",
+        },
+      ],
+    };
+    const out = formatAnalyzeOutput(result);
+    assert.ok(!out.includes("✓ 无热点"));
+    assert.ok(out.includes("k1 — 3"));
+  });
+
+  it("!ok 直接返回 ❌ 开头", () => {
+    assert.equal(formatAnalyzeOutput({ ok: false, error: "bad" }), "❌ bad");
+  });
+
+  it("skipped 直接返回 ⊘ 开头", () => {
+    assert.equal(formatAnalyzeOutput({ ok: true, skipped: "无历史" }), "⊘ 无历史");
+  });
+});
