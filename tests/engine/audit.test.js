@@ -275,6 +275,87 @@ describe("audit — bumpAuditCounter (T14b)", () => {
     assert.equal(raw.archives, 2);
     rmSync(dir, { recursive: true, force: true });
   });
+
+  it("self-heals when .audit-counter.json is corrupted JSON (T14.bis b)", () => {
+    const dir = fresh();
+    const p = join(dir, ".stw", ".audit-counter.json");
+    writeFileSync(p, "{{{ not valid json");
+    // First bump after corruption: reset to archives:1 and rewrite valid JSON
+    const firstBump = bumpAuditCounter(dir);
+    assert.equal(firstBump.archives, 1);
+    assert.equal(firstBump.prompt, null);
+    // File must now parse as legal JSON
+    const raw1 = JSON.parse(readFileSyncSafe(p));
+    assert.equal(raw1.archives, 1);
+    // Second bump: normal read path, increments to 2
+    const secondBump = bumpAuditCounter(dir);
+    assert.equal(secondBump.archives, 2);
+    const raw2 = JSON.parse(readFileSyncSafe(p));
+    assert.equal(raw2.archives, 2);
+    rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+describe("audit — opts.eventsOverride DI (T14.bis a)", () => {
+  it("honors opts.eventsOverride bypassing readEvents/fs entirely", async () => {
+    const dir = fresh();
+    // Intentionally write NO events.jsonl file — override must still work
+    const overrideEvents = [
+      sessionStart("2026-05-09T00:00:00Z", "di-A"),
+      { ts: "2026-05-09T00:01:00Z", id: "1", type: "gate.confidence", task: "di-A", phase: 1, data: { ready: false } },
+      sessionStart("2026-05-10T00:00:00Z", "di-B"),
+      sessionStart("2026-05-11T00:00:00Z", "di-C"),
+    ];
+    const r = await auditConstraints(dir, { eventsOverride: overrideEvents });
+    assert.equal(r.ok, true);
+    assert.equal(r.window.actualTasks, 3);
+    assert.deepEqual(r.window.taskDescriptions, ["di-A", "di-B", "di-C"]);
+    const conf = r.constraints.find((c) => c.id === "confidence");
+    assert.equal(conf.triggered, 1);
+    rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+describe("audit — opts.minTasks parameter (T14.bis c)", () => {
+  it("raises dead-weight threshold: 3 tasks with 0 triggers no longer flagged when minTasks=5", async () => {
+    const dir = fresh();
+    writeEvents(dir, [
+      sessionStart("2026-05-09T00:00:00Z", "A"),
+      sessionStart("2026-05-10T00:00:00Z", "B"),
+      sessionStart("2026-05-11T00:00:00Z", "C"),
+    ]);
+    const r = await auditConstraints(dir, { minTasks: 5 });
+    const az = r.constraints.find((c) => c.id === "attack-zone");
+    assert.equal(az.triggered, 0);
+    assert.equal(
+      az.suspectedDeadWeight,
+      false,
+      "minTasks=5 must suppress dead-weight flag when window has only 3 tasks",
+    );
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("defaults to MIN_TASKS_FOR_DEAD_WEIGHT=3 when opts.minTasks absent", async () => {
+    const dir = fresh();
+    writeEvents(dir, [
+      sessionStart("2026-05-09T00:00:00Z", "A"),
+      sessionStart("2026-05-10T00:00:00Z", "B"),
+      sessionStart("2026-05-11T00:00:00Z", "C"),
+    ]);
+    const r = await auditConstraints(dir);
+    const az = r.constraints.find((c) => c.id === "attack-zone");
+    assert.equal(az.suspectedDeadWeight, true, "default 3 must still flag");
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("rejects --min-tasks <= 0", async () => {
+    const dir = fresh();
+    writeEvents(dir, [sessionStart("2026-05-11T00:00:00Z", "t")]);
+    const r = await auditConstraints(dir, { minTasks: 0 });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /必须为 >= 1/);
+    rmSync(dir, { recursive: true, force: true });
+  });
 });
 
 import { readFileSync as readFileSyncSafe } from "node:fs";

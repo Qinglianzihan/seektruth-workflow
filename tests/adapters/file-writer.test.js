@@ -427,3 +427,68 @@ describe("File Writer — Claude Code PostToolUse hook injection", () => {
     assert.equal(content, "{ this is not json");
   });
 });
+
+describe("File Writer — Claude Code Stop hook injection (T11)", () => {
+  const claudeEnv = {
+    project: null,
+    aiTools: [{ name: "Claude Code", source: "test" }],
+    mcpConfigs: [],
+    skills: [],
+  };
+
+  it("creates settings.hooks.Stop entry with stw stop-hook run command", () => {
+    const dir = freshDir();
+    writeStwFiles(dir, claudeEnv, EMPTY_CONFLICTS);
+    const settings = JSON.parse(readFileSync(join(dir, ".claude", "settings.json"), "utf-8"));
+    assert.ok(Array.isArray(settings.hooks?.Stop), "expected hooks.Stop array");
+    assert.equal(settings.hooks.Stop.length, 1);
+    const entry = settings.hooks.Stop[0];
+    assert.ok(Array.isArray(entry.hooks));
+    assert.equal(entry.hooks[0].type, "command");
+    assert.ok(entry.hooks[0].command.includes("stw stop-hook run"));
+  });
+
+  it("is idempotent — second init does not duplicate Stop hook entry", () => {
+    const dir = freshDir();
+    writeStwFiles(dir, claudeEnv, EMPTY_CONFLICTS);
+    writeStwFiles(dir, claudeEnv, EMPTY_CONFLICTS);
+    const settings = JSON.parse(readFileSync(join(dir, ".claude", "settings.json"), "utf-8"));
+    const stwStopHooks = settings.hooks.Stop.filter((e) =>
+      e.hooks.some((h) => h.command.includes("stw stop-hook run"))
+    );
+    assert.equal(stwStopHooks.length, 1);
+  });
+
+  it("coexists with an existing Stop entry (different command)", () => {
+    const dir = freshDir();
+    const existing = {
+      hooks: {
+        Stop: [{ hooks: [{ type: "command", command: "my-own-logger" }] }],
+      },
+    };
+    writeFile(dir, ".claude/settings.json", JSON.stringify(existing, null, 2));
+    writeStwFiles(dir, claudeEnv, EMPTY_CONFLICTS);
+    const merged = JSON.parse(readFileSync(join(dir, ".claude", "settings.json"), "utf-8"));
+    assert.equal(merged.hooks.Stop.length, 2);
+    assert.ok(merged.hooks.Stop[0].hooks[0].command.includes("my-own-logger"));
+    assert.ok(merged.hooks.Stop[1].hooks[0].command.includes("stw stop-hook run"));
+  });
+
+  it("injects both PostToolUse and Stop hooks on a fresh settings.json", () => {
+    const dir = freshDir();
+    writeStwFiles(dir, claudeEnv, EMPTY_CONFLICTS);
+    const settings = JSON.parse(readFileSync(join(dir, ".claude", "settings.json"), "utf-8"));
+    assert.ok(
+      settings.hooks.PostToolUse.some((m) =>
+        m.hooks.some((h) => h.command.includes("stw hook run"))
+      ),
+      "PostToolUse hook missing",
+    );
+    assert.ok(
+      settings.hooks.Stop.some((e) =>
+        e.hooks.some((h) => h.command.includes("stw stop-hook run"))
+      ),
+      "Stop hook missing",
+    );
+  });
+});

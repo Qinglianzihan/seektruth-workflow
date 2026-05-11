@@ -21,6 +21,7 @@ import { getRelatedErrors, getAllErrors, findRelatedErrorsByTask } from "../src/
 import { deepScanMcp } from "../src/scout/mcp-deep-scanner.js";
 import { runCheck, listGates } from "../src/engine/check.js";
 import { runHook } from "../src/engine/hook.js";
+import { runStopHook, readStdinSafe } from "../src/engine/stop-hook.js";
 import { readEvents, appendEvent } from "../src/engine/events.js";
 import { formatTimeline, findRootCause, summarizeEvent } from "../src/engine/replay.js";
 import { injectSimilarCases } from "../src/engine/analysis-injector.js";
@@ -54,8 +55,9 @@ const help = () => {
   console.log("  stats          查看统计报告");
   console.log("  check          运行所有质量门禁 (lint + ratchet + test)");
   console.log("  hook run       由 AI 工具 hook 触发的轻量体检（lint + 阶段 3+ 范围检查）");
+  console.log("  stop-hook run  Ralph Loop Stop hook：phase 1-4 拦退出，注入 stderr re-inject 原意");
   console.log("  replay         回放 .stw/events.jsonl 事件流 (--tail / --type / --task / --root-cause / --json)");
-  console.log("  audit          审计五大核心约束在最近 N 任务的触发情况 (--limit N，默认 10)");
+  console.log("  audit          审计五大核心约束在最近 N 任务的触发情况 (--limit N，默认 10; --min-tasks N，默认 3)");
   console.log("  ratchet        管理 Ratchet 规则 (list/add/remove)");
   console.log("  forge          需求炼金炉：多 agent 需求讨论状态机");
 };
@@ -604,6 +606,36 @@ const cmdHook = () => {
   process.exit(result.exitCode);
 };
 
+const cmdStopHook = () => {
+  const rootDir = process.cwd();
+  const args = process.argv.slice(3);
+  const sub = args[0];
+
+  if (sub !== "run") {
+    console.log("用法: stw stop-hook run");
+    console.log("");
+    console.log("Ralph Loop Stop hook —— 由 Claude Code Stop 事件触发。");
+    console.log("当 .stw/.progress.json 存在且 phase ∈ {1,2,3,4} 且 stop_hook_active ≠ true：");
+    console.log("  exit 2 + stderr 注入「回到阶段 X」re-inject 原意（沿用 T2 协议）。");
+    console.log("其它情况一律 exit 0 放行。");
+    return;
+  }
+
+  const stdinPayload = readStdinSafe();
+
+  let result;
+  try {
+    result = runStopHook({ rootDir, stdinPayload });
+  } catch (err) {
+    process.stderr.write(`[stw stop-hook] 内部错误: ${err.message}\n`);
+    process.exit(0);
+    return;
+  }
+
+  if (result.stderr) process.stderr.write(result.stderr + "\n");
+  process.exit(result.exitCode);
+};
+
 const cmdAudit = async () => {
   const rootDir = process.cwd();
   const args = process.argv.slice(3);
@@ -618,7 +650,21 @@ const cmdAudit = async () => {
     }
     limit = parsed;
   }
-  const result = await auditConstraints(rootDir, limit !== undefined ? { limit } : {});
+  const minTasksIdx = args.indexOf("--min-tasks");
+  let minTasks;
+  if (minTasksIdx !== -1) {
+    const raw = args[minTasksIdx + 1];
+    const parsed = parseInt(raw, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      console.error(`\n❌ --min-tasks 需要一个 >= 1 的整数（收到 "${raw}"）`);
+      process.exit(1);
+    }
+    minTasks = parsed;
+  }
+  const opts = {};
+  if (limit !== undefined) opts.limit = limit;
+  if (minTasks !== undefined) opts.minTasks = minTasks;
+  const result = await auditConstraints(rootDir, opts);
   console.log(formatAuditOutput(result));
   appendEvent(rootDir, "audit.run", {
     actualTasks: result.window?.actualTasks ?? 0,
@@ -971,6 +1017,9 @@ switch (command) {
     break;
   case "hook":
     cmdHook();
+    break;
+  case "stop-hook":
+    cmdStopHook();
     break;
   case "replay":
     cmdReplay().catch((err) => {

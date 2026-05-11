@@ -94,7 +94,8 @@ function buildEventDetail(id, window, triggered, notTriggered) {
   return `触发 ${ratio} 任务；未触发 ${notTriggered}/${window.length}`;
 }
 
-function auditErrorRegistry(rootDir, window) {
+function auditErrorRegistry(rootDir, window, opts = {}) {
+  const minTasks = opts.minTasks ?? MIN_TASKS_FOR_DEAD_WEIGHT;
   const entries = getAllErrors(rootDir);
   if (window.length === 0) {
     return {
@@ -114,7 +115,7 @@ function auditErrorRegistry(rootDir, window) {
   const suspectedDeadWeight =
     triggered === 0 &&
     entries.length > 0 &&
-    window.length >= MIN_TASKS_FOR_DEAD_WEIGHT;
+    window.length >= minTasks;
   return {
     id: "error-registry",
     label: "error-registry 病例库",
@@ -162,6 +163,10 @@ export async function auditConstraints(rootDir, opts = {}) {
   if (!Number.isFinite(limit) || limit <= 0) {
     return { ok: false, error: `--limit 必须为 >= 1 的整数（收到 ${opts.limit}）` };
   }
+  const minTasks = opts.minTasks ?? MIN_TASKS_FOR_DEAD_WEIGHT;
+  if (!Number.isFinite(minTasks) || minTasks <= 0) {
+    return { ok: false, error: `--min-tasks 必须为 >= 1 的整数（收到 ${opts.minTasks}）` };
+  }
 
   const events = opts.eventsOverride || (await readEvents(rootDir));
   const sessions = splitIntoSessions(events);
@@ -178,7 +183,7 @@ export async function auditConstraints(rootDir, opts = {}) {
     const triggered = window.filter((s) => c.classify(s.events)).length;
     const notTriggered = window.length - triggered;
     const suspectedDeadWeight =
-      triggered === 0 && window.length >= MIN_TASKS_FOR_DEAD_WEIGHT;
+      triggered === 0 && window.length >= minTasks;
     constraints.push({
       id: c.id, label: c.label,
       triggered, notTriggered,
@@ -188,7 +193,7 @@ export async function auditConstraints(rootDir, opts = {}) {
     });
   }
 
-  constraints.push(auditErrorRegistry(rootDir, window));
+  constraints.push(auditErrorRegistry(rootDir, window, { minTasks }));
   constraints.push(auditClaudeMd(rootDir, opts));
 
   const suspectedDeadWeight = constraints
@@ -253,20 +258,26 @@ const COUNTER_THRESHOLD = 5;
 
 /**
  * T14b: bump the archive counter; return a prompt string when archives % 5 === 0.
- * Never throws — on any IO failure, returns { archives: 0, prompt: null }.
+ * On corrupted counter JSON, resets to { archives: 1 } and rewrites the file
+ * (self-heal) instead of silently returning 0 and leaving the file broken.
+ * Write-path errors swallow to { archives: 0, prompt: null } as a last resort.
  */
 export function bumpAuditCounter(rootDir) {
   const counterPath = join(rootDir, COUNTER_FILE);
   let counter = { archives: 0 };
-  try {
-    if (existsSync(counterPath)) {
+  if (existsSync(counterPath)) {
+    try {
       const parsed = JSON.parse(readFileSync(counterPath, "utf-8"));
       if (parsed && typeof parsed.archives === "number") counter = parsed;
+    } catch {
+      counter = { archives: 0 };
     }
-    counter.archives = (counter.archives || 0) + 1;
+  }
+  counter.archives = (counter.archives || 0) + 1;
+  try {
     writeFileSync(counterPath, JSON.stringify(counter, null, 2));
   } catch {
-    return { archives: counter.archives || 0, prompt: null };
+    return { archives: counter.archives, prompt: null };
   }
   const prompt =
     counter.archives % COUNTER_THRESHOLD === 0

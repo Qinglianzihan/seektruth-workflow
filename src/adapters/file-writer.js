@@ -321,18 +321,33 @@ export function writeStwFiles(rootDir, environment, conflicts) {
 
     if (!settings.hooks || typeof settings.hooks !== "object") settings.hooks = {};
     if (!Array.isArray(settings.hooks.PostToolUse)) settings.hooks.PostToolUse = [];
+    if (!Array.isArray(settings.hooks.Stop)) settings.hooks.Stop = [];
 
     const STW_COMMAND_MARKER = "stw hook run";
-    const alreadyInstalled = settings.hooks.PostToolUse.some((matcher) =>
+    const STW_STOP_COMMAND_MARKER = "stw stop-hook run";
+
+    const postToolUseInstalled = settings.hooks.PostToolUse.some((matcher) =>
       Array.isArray(matcher?.hooks) &&
       matcher.hooks.some((h) => typeof h?.command === "string" && h.command.includes(STW_COMMAND_MARKER))
     );
-    if (alreadyInstalled) return;
+    if (!postToolUseInstalled) {
+      settings.hooks.PostToolUse.push({
+        matcher: "Edit|Write|MultiEdit",
+        hooks: [{ type: "command", command: "stw hook run --event PostToolUse" }],
+      });
+    }
 
-    settings.hooks.PostToolUse.push({
-      matcher: "Edit|Write|MultiEdit",
-      hooks: [{ type: "command", command: "stw hook run --event PostToolUse" }],
-    });
+    const stopInstalled = settings.hooks.Stop.some((entry) =>
+      Array.isArray(entry?.hooks) &&
+      entry.hooks.some((h) => typeof h?.command === "string" && h.command.includes(STW_STOP_COMMAND_MARKER))
+    );
+    if (!stopInstalled) {
+      settings.hooks.Stop.push({
+        hooks: [{ type: "command", command: "stw stop-hook run" }],
+      });
+    }
+
+    if (postToolUseInstalled && stopInstalled) return;
 
     writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + "\n");
   }
