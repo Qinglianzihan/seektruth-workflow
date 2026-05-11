@@ -3,6 +3,7 @@ import { CHECK_UNKNOWN_GATE, CHECK_EXEC_FAILED, CHECK_ALL_CLEAR } from "./messag
 import { runRatchetCheck } from "./ratchet.js";
 import { runImportCheck } from "./import-linter.js";
 import { appendEvent, truncateForEvent } from "./events.js";
+import { detectDocDrift, formatDocDriftOutput } from "./doc-drift.js";
 
 /**
  * Gate definitions. Each gate has a label and a run(rootDir) function.
@@ -49,6 +50,17 @@ const GATES = {
       return {
         passed: result.status === 0,
         output: (result.stdout + result.stderr).trim(),
+      };
+    },
+  },
+
+  "doc-drift": {
+    label: "Doc Drift (roadmap vs sources)",
+    run(rootDir) {
+      const result = detectDocDrift(rootDir);
+      return {
+        passed: true,
+        output: formatDocDriftOutput(result),
       };
     },
   },

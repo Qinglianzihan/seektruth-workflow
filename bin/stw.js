@@ -28,6 +28,7 @@ import { ratchetError, getRatchetRules, removeRatchetRule } from "../src/engine/
 import { injectQuote } from "../src/engine/quote-injector.js";
 import { PHASE_STORIES, ERROR_FRIENDLY, STATUS_EMPTY, RATCHET_ADDED, RATCHET_REMOVED, RATCHET_EMPTY, ATTACK_ZONE_CLEANUP_HINT, REPLAY_EMPTY, REPLAY_TIMELINE_HEADER, REPLAY_ROOT_CAUSE_NONE, REPLAY_ROOT_CAUSE_HEADER, REPLAY_ROOT_CAUSE_FAILURE, REPLAY_ROOT_CAUSE_CONTEXT, REPLAY_ROTATED_HINT } from "../src/engine/messages.js";
 import { startForge, getForgeStatus, inspectForgeAgent, advanceForge, acceptForge, abortForge, runForgeAgents, AGENTS } from "../src/engine/forge.js";
+import { detectDocDrift } from "../src/engine/doc-drift.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8"));
@@ -178,6 +179,13 @@ const cmdStatus = () => {
     if (hours >= 2 || (current.iterations && current.iterations.length >= 4)) {
       console.log(`\n  💡 长会话易导致上下文腐化，建议 checkpoint 或重新开始。`);
     }
+
+    try {
+      const drift = detectDocDrift(rootDir);
+      if (drift.issues.length > 0) {
+        console.log(`\n📚 派生文档漂移 ${drift.issues.length} 条（运行 stw check doc-drift 查看详情）`);
+      }
+    } catch { /* swallow — drift hint is advisory */ }
   } catch (err) {
     console.error(`\n❌ status 失败: ${err.message}`);
     process.exit(1);
@@ -460,6 +468,14 @@ const cmdReport = () => {
     console.log(`   存档数量: ${allReports.length}`);
     if (result.ingested > 0) {
       console.log(`   已从 Summary 入库 ${result.ingested} 条错误病例 → .stw/error-registry.json`);
+    }
+    if (result.docDrift) {
+      if (result.docDrift.driftCount > 0) {
+        console.log(`\n📚 归档后派生文档反向校验：发现 ${result.docDrift.driftCount} 处漂移`);
+        console.log(`   完整列表：stw check doc-drift`);
+      } else {
+        console.log(`\n📚 归档后派生文档反向校验：一致`);
+      }
     }
   } catch (err) {
     console.error(`\n❌ report 失败: ${err.message}`);

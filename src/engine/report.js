@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync, readdirSync, mkdirSync, copyFileSync } from "node:fs";
 import { join } from "node:path";
 import { logError } from "./error-registry.js";
+import { detectDocDrift, formatDocDriftOutput } from "./doc-drift.js";
 
 const REPORTS_DIR = ".stw/reports";
 
@@ -43,7 +44,19 @@ export function archiveReport(rootDir) {
     ingested += 1;
   }
 
-  return { ok: true, path: reportPath, name: reportName, ingested };
+  let docDrift;
+  try {
+    const d = detectDocDrift(rootDir);
+    docDrift = {
+      driftCount: d.issues.length,
+      ok: d.ok,
+      output: formatDocDriftOutput(d),
+    };
+  } catch {
+    docDrift = undefined;
+  }
+
+  return { ok: true, path: reportPath, name: reportName, ingested, docDrift };
 }
 
 /**
