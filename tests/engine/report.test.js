@@ -271,6 +271,54 @@ describe("Report — parseSummaryErrorCases", () => {
     assert.equal(cases.length, 2);
     assert.ok(cases[0].description.includes("Summary 表头"));
   });
+
+  // T17 — 6-column format with explicit 归类
+  it("accepts 6-column 归类 format and uses explicit category when valid", () => {
+    const md =
+      "## 6. 错误病例\n\n" +
+      "| 阶段 | 错误描述 | 根因 | 解决方案 | 标签 | 归类 |\n" +
+      "| :--- | :--- | :--- | :--- | :--- | :--- |\n" +
+      "| 3 | parser indexOf 锚点 | regex 边界 | 抽 util | parser,regex | harness |\n" +
+      "| 1 | 口径不一致 | 描述歧义 | 对齐口径 | 口径 | description |\n";
+    const cases = parseSummaryErrorCases(md);
+    assert.equal(cases.length, 2);
+    assert.equal(cases[0].category, "harness");
+    assert.equal(cases[1].category, "description");
+  });
+
+  it("ignores invalid explicit category (lets logError heuristic handle)", () => {
+    const md =
+      "## 6. 错误病例\n\n" +
+      "| 阶段 | 错误描述 | 根因 | 解决方案 | 标签 | 归类 |\n" +
+      "| :--- | :--- | :--- | :--- | :--- | :--- |\n" +
+      "| 3 | parser | 锚点 | 抽 | parser | bogus-category |\n";
+    const cases = parseSummaryErrorCases(md);
+    assert.equal(cases.length, 1);
+    assert.equal(cases[0].category, undefined);
+  });
+
+  it("splits slash-joined tags via splitTags (T17 regression for 正则边界/贪婪回溯/反直觉 noise)", () => {
+    const md =
+      "## 6. 错误病例\n\n" +
+      "| 阶段 | 错误描述 | 根因 | 解决方案 | 标签 |\n" +
+      "| :--- | :--- | :--- | :--- | :--- |\n" +
+      "| 3 | parser x | 锚点 | 抽 util | 正则边界/贪婪回溯/反直觉 |\n";
+    const cases = parseSummaryErrorCases(md);
+    assert.equal(cases.length, 1);
+    assert.deepEqual(cases[0].tags, ["正则边界", "贪婪回溯", "反直觉"]);
+  });
+
+  it("5-column old-format Summary still parses without category", () => {
+    const md =
+      "## 6. 错误病例\n\n" +
+      "| 阶段 | 错误描述 | 根因 | 解决方案 | 标签 |\n" +
+      "| :--- | :--- | :--- | :--- | :--- |\n" +
+      "| 3 | parser | regex | 抽 | parser,regex |\n";
+    const cases = parseSummaryErrorCases(md);
+    assert.equal(cases.length, 1);
+    assert.equal(cases[0].category, undefined);
+    assert.deepEqual(cases[0].tags, ["parser", "regex"]);
+  });
 });
 
 describe("Report — archiveReport ingests error cases", () => {

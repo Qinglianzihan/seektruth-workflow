@@ -194,3 +194,153 @@ describe("runHook — events instrumentation", () => {
     assert.equal(events.length, 0);
   });
 });
+
+describe("runHook — T16 loop detection", () => {
+  const EDIT_PAYLOAD = (filePath) => JSON.stringify({
+    tool_name: "Edit",
+    tool_input: { file_path: filePath, old_string: "a", new_string: "b" },
+  });
+
+  it("does not affect existing path when stdinPayload empty", () => {
+    const dir = freshDir();
+    withProgress(dir, 1);
+    const result = runHook(
+      { rootDir: dir, stdinPayload: "" },
+      { lintRunner: PASS_LINT },
+    );
+    assert.equal(result.exitCode, 0);
+    assert.equal(result.stderr, "");
+    const events = readEventsForTest(dir);
+    assert.equal(events.filter((e) => e.type === "hook.loop-detected").length, 0);
+  });
+
+  it("records filePath on hook.run when stdin payload is an Edit call", () => {
+    const dir = freshDir();
+    withProgress(dir, 1);
+    runHook(
+      { rootDir: dir, stdinPayload: EDIT_PAYLOAD("/abs/foo.js") },
+      { lintRunner: PASS_LINT, eventsReader: () => [] },
+    );
+    const events = readEventsForTest(dir);
+    const hook = events.find((e) => e.type === "hook.run");
+    assert.ok(hook);
+    assert.equal(hook.data.filePath, "/abs/foo.js");
+  });
+
+  it("emits hook.loop-detected and stderr warning when threshold reached", () => {
+    const dir = freshDir();
+    withProgress(dir, 1);
+    // Simulate 2 prior consecutive edits of the same file — this 3rd call
+    // will be appended as hook.run (bringing count to 3) and trigger warn.
+    const priorEvents = [
+      { type: "hook.run", task: "test", data: { filePath: "/abs/foo.js" } },
+      { type: "hook.run", task: "test", data: { filePath: "/abs/foo.js" } },
+    ];
+    const result = runHook(
+      { rootDir: dir, stdinPayload: EDIT_PAYLOAD("/abs/foo.js") },
+      {
+        lintRunner: PASS_LINT,
+        // eventsReader returns prior events plus the just-appended one
+        eventsReader: (d) => [
+          ...priorEvents,
+          ...readEventsForTest(d).filter((e) => e.type === "hook.run"),
+        ],
+      },
+    );
+    assert.equal(result.exitCode, 2);
+    assert.ok(result.stderr.includes("连续 3 次编辑同一文件"));
+    assert.ok(result.stderr.includes("/abs/foo.js"));
+    assert.ok(result.stderr.includes("《实践论》"));
+    const events = readEventsForTest(dir);
+    const loopEvent = events.find((e) => e.type === "hook.loop-detected");
+    assert.ok(loopEvent, "expected hook.loop-detected event");
+    assert.equal(loopEvent.data.filePath, "/abs/foo.js");
+    assert.equal(loopEvent.data.count, 3);
+    assert.equal(loopEvent.data.threshold, 3);
+  });
+
+  it("does not warn when a different file breaks continuity", () => {
+    const dir = freshDir();
+    withProgress(dir, 1);
+    const priorEvents = [
+      { type: "hook.run", task: "test", data: { filePath: "/abs/foo.js" } },
+      { type: "hook.run", task: "test", data: { filePath: "/abs/bar.js" } },
+      { type: "hook.run", task: "test", data: { filePath: "/abs/foo.js" } },
+    ];
+    const result = runHook(
+      { rootDir: dir, stdinPayload: EDIT_PAYLOAD("/abs/foo.js") },
+      {
+        lintRunner: PASS_LINT,
+        eventsReader: (d) => [
+          ...priorEvents,
+          ...readEventsForTest(d).filter((e) => e.type === "hook.run"),
+        ],
+      },
+    );
+    assert.equal(result.exitCode, 0);
+    assert.equal(result.stderr, "");
+    const events = readEventsForTest(dir);
+    assert.equal(events.filter((e) => e.type === "hook.loop-detected").length, 0);
+  });
+
+  it("honors custom threshold via deps.loopThreshold", () => {
+    const dir = freshDir();
+    withProgress(dir, 1);
+    const priorEvents = [
+      { type: "hook.run", task: "test", data: { filePath: "/abs/foo.js" } },
+    ];
+    const result = runHook(
+      { rootDir: dir, stdinPayload: EDIT_PAYLOAD("/abs/foo.js") },
+      {
+        lintRunner: PASS_LINT,
+        loopThreshold: 2,
+        eventsReader: (d) => [
+          ...priorEvents,
+          ...readEventsForTest(d).filter((e) => e.type === "hook.run"),
+        ],
+      },
+    );
+    assert.equal(result.exitCode, 2);
+    assert.ok(result.stderr.includes("连续 2 次编辑"));
+  });
+
+  it("accumulates loop warning alongside lint failure", () => {
+    const dir = freshDir();
+    withProgress(dir, 1);
+    const priorEvents = [
+      { type: "hook.run", task: "test", data: { filePath: "/abs/foo.js" } },
+      { type: "hook.run", task: "test", data: { filePath: "/abs/foo.js" } },
+    ];
+    const result = runHook(
+      { rootDir: dir, stdinPayload: EDIT_PAYLOAD("/abs/foo.js") },
+      {
+        lintRunner: FAIL_LINT,
+        eventsReader: (d) => [
+          ...priorEvents,
+          ...readEventsForTest(d).filter((e) => e.type === "hook.run"),
+        ],
+      },
+    );
+    assert.equal(result.exitCode, 2);
+    assert.ok(result.stderr.includes("lint 未通过"));
+    assert.ok(result.stderr.includes("连续 3 次编辑"));
+  });
+
+  it("non-edit tool payload (Bash) takes non-loop path", () => {
+    const dir = freshDir();
+    withProgress(dir, 1);
+    const bashPayload = JSON.stringify({
+      tool_name: "Bash",
+      tool_input: { command: "ls" },
+    });
+    const result = runHook(
+      { rootDir: dir, stdinPayload: bashPayload },
+      { lintRunner: PASS_LINT },
+    );
+    assert.equal(result.exitCode, 0);
+    const events = readEventsForTest(dir);
+    const hook = events.find((e) => e.type === "hook.run");
+    assert.ok(hook);
+    assert.equal(hook.data.filePath, undefined);
+  });
+});

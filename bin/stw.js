@@ -17,7 +17,7 @@ import { getCurrentPhase, PHASES, startSession, advancePhase, abortSession, roll
 import { generateLockdown, checkDirtyTree } from "../src/engine/lockdown.js";
 import { archiveReport, listReports, getRecentSummaries } from "../src/engine/report.js";
 import { getStats, generateStatsReport, logTokens, logGateResult } from "../src/engine/stats.js";
-import { getRelatedErrors, getAllErrors, findRelatedErrorsByTask } from "../src/engine/error-registry.js";
+import { getRelatedErrors, getAllErrors, findRelatedErrorsByTask, cleanRegistry, getErrorInsights, CATEGORY_VALUES } from "../src/engine/error-registry.js";
 import { deepScanMcp } from "../src/scout/mcp-deep-scanner.js";
 import { runCheck, listGates } from "../src/engine/check.js";
 import { runHook } from "../src/engine/hook.js";
@@ -579,6 +579,45 @@ const cmdCheck = () => {
   }
 };
 
+const cmdRegistry = () => {
+  const rootDir = process.cwd();
+  const args = process.argv.slice(3);
+  const sub = args[0];
+
+  if (sub === "clean") {
+    const dryRun = args.includes("--dry-run");
+    const result = cleanRegistry(rootDir, { dryRun });
+    console.log("");
+    console.log(`🧹 registry 清洗${dryRun ? "（预览）" : ""}`);
+    console.log(`   总条目: ${result.total}`);
+    console.log(`   tags 有变化的条目: ${result.cleanedTagCount}`);
+    console.log(`   category 回填的条目: ${result.backfilledCategory}`);
+    if (result.backupPath) {
+      console.log(`   备份: ${result.backupPath}`);
+    } else if (dryRun) {
+      console.log(`   （dry-run 未写文件、未生成备份）`);
+    }
+    return;
+  }
+
+  if (sub === "stats") {
+    const insights = getErrorInsights(rootDir);
+    console.log("");
+    console.log(`📊 error-registry 统计`);
+    console.log(`   总条目: ${insights.total}`);
+    console.log(`   按 phase: ${JSON.stringify(insights.byPhase)}`);
+    const byCat = insights.byCategory || {};
+    const catLine = CATEGORY_VALUES.map((c) => `${c}=${byCat[c] || 0}`).join(" / ");
+    console.log(`   按 category: ${catLine}`);
+    console.log(`   top tags: ${(insights.topTags || []).join(", ") || "（无）"}`);
+    return;
+  }
+
+  console.log("用法:");
+  console.log("  stw registry clean [--dry-run]   清洗既有 tag 噪音 + 启发式回填 category");
+  console.log("  stw registry stats               展示 registry 总量 / phase / category / top tags 分布");
+};
+
 const cmdHook = () => {
   const rootDir = process.cwd();
   const args = process.argv.slice(3);
@@ -595,9 +634,11 @@ const cmdHook = () => {
   const eventIdx = args.indexOf("--event");
   if (eventIdx !== -1 && args[eventIdx + 1]) event = args[eventIdx + 1];
 
+  const stdinPayload = readStdinSafe();
+
   let result;
   try {
-    result = runHook({ rootDir, event });
+    result = runHook({ rootDir, event, stdinPayload });
   } catch (err) {
     process.stderr.write(`[stw hook] 内部错误: ${err.message}\n`);
     process.exit(2);
@@ -1074,6 +1115,9 @@ switch (command) {
     break;
   case "ratchet":
     cmdRatchet();
+    break;
+  case "registry":
+    cmdRegistry();
     break;
   case "--help":
   case "-h":

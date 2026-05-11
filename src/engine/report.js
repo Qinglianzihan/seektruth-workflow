@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync, readdirSync, mkdirSync, copyFileSync } from "node:fs";
 import { join } from "node:path";
-import { logError } from "./error-registry.js";
+import { logError, splitTags, CATEGORY_VALUES } from "./error-registry.js";
 import { detectDocDrift, formatDocDriftOutput } from "./doc-drift.js";
 import { bumpAuditCounter } from "./audit.js";
 import { checkEvidenceLedger } from "./evidence.js";
@@ -102,7 +102,9 @@ export function archiveReport(rootDir) {
 
 /**
  * 解析 Summary-Template.md 第 6 节"错误病例"表格。
- * 表头：| 阶段 | 错误描述 | 根因 | 解决方案 | 标签 |
+ * 表头：| 阶段 | 错误描述 | 根因 | 解决方案 | 标签 | 归类(可选) |
+ * - 5 列（旧模板）：无 category，logError 端启发式补
+ * - 6 列（T17 新模板）：显式 category 优先（必须在 CATEGORY_VALUES 内）
  * 返回可直接喂给 logError 的数组；空行/占位符自动跳过。
  */
 export function parseSummaryErrorCases(content) {
@@ -131,21 +133,23 @@ export function parseSummaryErrorCases(content) {
 
     const cells = line.slice(1, -1).split("|").map((c) => c.trim());
     if (cells.length < 5) continue;
-    const [phaseCell, desc, rootCause, resolution, tagsCell] = cells;
+    const [phaseCell, desc, rootCause, resolution, tagsCell, categoryCell] = cells;
     if (!desc) continue;
 
     const phaseMatch = phaseCell.match(/\d+/);
-    const tags = tagsCell
-      ? tagsCell.split(/[,，、\s]+/).map((t) => t.trim()).filter(Boolean)
-      : [];
-
-    cases.push({
+    const tags = splitTags(tagsCell);
+    const explicitCat = (categoryCell || "").trim();
+    const entry = {
       phase: phaseMatch ? parseInt(phaseMatch[0], 10) : 0,
       description: desc,
       rootCause: rootCause || "",
       resolution: resolution || "",
       tags,
-    });
+    };
+    if (explicitCat && CATEGORY_VALUES.includes(explicitCat)) {
+      entry.category = explicitCat;
+    }
+    cases.push(entry);
   }
   return cases;
 }

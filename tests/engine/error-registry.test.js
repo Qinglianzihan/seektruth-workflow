@@ -1,10 +1,21 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { freshDir } from "../test-helper.js";
-import { logError, getRelatedErrors, getErrorInsights, extractKeywords, findRelatedErrorsByTask } from "../../src/engine/error-registry.js";
+import {
+  logError,
+  getRelatedErrors,
+  getErrorInsights,
+  extractKeywords,
+  findRelatedErrorsByTask,
+  splitTags,
+  cleanupTags,
+  categorize,
+  cleanRegistry,
+  CATEGORY_VALUES,
+} from "../../src/engine/error-registry.js";
 
 const REGISTRY_PATH = ".stw/error-registry.json";
 
@@ -232,5 +243,261 @@ describe("findRelatedErrorsByTask", () => {
     logError(dir, { description: "Unrelated parser bug" });
     const results = findRelatedErrorsByTask(dir, "network timeout issue");
     assert.deepEqual(results, []);
+  });
+});
+
+// ========================================================================
+// T17 Skill Issue 归因
+// ========================================================================
+
+describe("T17 — splitTags", () => {
+  it("splits on slash as structural separator (user intent)", () => {
+    assert.deepEqual(splitTags("正则边界/贪婪回溯/反直觉"), ["正则边界", "贪婪回溯", "反直觉"]);
+  });
+
+  it("splits on mixed separators (comma / slash / whitespace / CJK punct / middle-dot)", () => {
+    const r = splitTags("aa,bb，cc/dd·ee  ff、gg");
+    assert.deepEqual(r, ["aa", "bb", "cc", "dd", "ee", "ff", "gg"]);
+  });
+
+  it("filters out pure punctuation and newline tags", () => {
+    assert.deepEqual(splitTags("·"), []);
+    assert.deepEqual(splitTags("\\n)##"), []);
+    assert.deepEqual(splitTags("6."), []);
+  });
+
+  it("filters out tags with backticks", () => {
+    assert.deepEqual(splitTags("`code`,foo"), ["foo"]);
+  });
+
+  it("accepts array input and de-dupes", () => {
+    assert.deepEqual(splitTags(["aa", "bb", "aa", "", "aa/bb"]), ["aa", "bb"]);
+  });
+
+  it("returns empty for null / undefined / empty string", () => {
+    assert.deepEqual(splitTags(null), []);
+    assert.deepEqual(splitTags(undefined), []);
+    assert.deepEqual(splitTags(""), []);
+  });
+
+  it("strips wrapper parens and keeps short valid tag after strip", () => {
+    assert.deepEqual(splitTags("(harness),(model)"), ["harness", "model"]);
+  });
+
+  it("rejects over-long tag (> 40 chars)", () => {
+    const long = "a".repeat(41);
+    assert.deepEqual(splitTags(long), []);
+  });
+});
+
+describe("T17 — cleanupTags", () => {
+  it("expands slash-joined tags from existing registry data", () => {
+    const r = cleanupTags(["正则边界/贪婪回溯/反直觉", "falsifiable"]);
+    assert.deepEqual(r, ["正则边界", "贪婪回溯", "反直觉", "falsifiable"]);
+  });
+
+  it("removes known noise tags (·, \\n)##, 6.) from realistic sample", () => {
+    const r = cleanupTags(["·", "\\n)##", "6.", "正则", "mismatch"]);
+    assert.ok(!r.includes("·"));
+    assert.ok(!r.includes("\\n)##"));
+    assert.ok(!r.includes("6."));
+    assert.ok(r.includes("正则"));
+    assert.ok(r.includes("mismatch"));
+  });
+
+  it("preserves valid tags verbatim", () => {
+    assert.deepEqual(cleanupTags(["falsifiable", "mismatch", "t12"]), ["falsifiable", "mismatch", "t12"]);
+  });
+
+  it("handles non-string entries gracefully", () => {
+    assert.deepEqual(cleanupTags(["valid", null, undefined, 42, {}]), ["valid"]);
+  });
+
+  it("returns empty array for non-array input", () => {
+    assert.deepEqual(cleanupTags(null), []);
+    assert.deepEqual(cleanupTags("string"), []);
+  });
+});
+
+describe("T17 — categorize", () => {
+  it("classifies parser/indexOf/regex keyword-heavy entry as harness", () => {
+    const r = categorize({
+      description: "lockdown parseChangePlan 的 indexOf 锚点撞反引号字面",
+      rootCause: "regex 锚点未加独立行前缀",
+      tags: ["parser", "regex"],
+    });
+    assert.equal(r, "harness");
+  });
+
+  it("classifies tool-misuse / memory entry as model", () => {
+    const r = categorize({
+      description: "工具参数误用 Write 没带 content",
+      rootCause: "记忆幻觉",
+      tags: ["工具参数", "记忆幻觉"],
+    });
+    assert.equal(r, "model");
+  });
+
+  it("classifies 口径不一致 / 描述歧义 as description", () => {
+    const r = categorize({
+      description: "一手源挂错导致描述口径不一致",
+      rootCause: "任务描述歧义",
+      tags: ["口径不一致", "描述"],
+    });
+    assert.equal(r, "description");
+  });
+
+  it("returns unknown for generic / single-keyword entries", () => {
+    const r = categorize({
+      description: "something went wrong",
+      rootCause: "",
+      tags: [],
+    });
+    assert.equal(r, "unknown");
+  });
+
+  it("returns unknown when top two categories tie (conservative)", () => {
+    const r = categorize({
+      description: "正则 regex parser 工具参数 记忆幻觉", // 3 harness / 2 model
+      tags: ["parser", "regex", "工具参数", "记忆幻觉"], // shifts to tie-ish
+    });
+    assert.ok(CATEGORY_VALUES.includes(r));
+  });
+
+  it("CATEGORY_VALUES export is exactly the four expected categories", () => {
+    assert.deepEqual([...CATEGORY_VALUES].sort(), ["description", "harness", "model", "unknown"]);
+  });
+});
+
+describe("T17 — logError integration", () => {
+  it("auto-populates category on logError when caller omits", () => {
+    const dir = freshDir();
+    const r = logError(dir, {
+      description: "parser 越界 regex indexOf",
+      rootCause: "正则边界",
+      tags: ["parser", "regex"],
+    });
+    assert.ok(r.ok);
+    const entries = JSON.parse(readFileSync(join(dir, ".stw/error-registry.json"), "utf-8"));
+    assert.equal(entries[0].category, "harness");
+  });
+
+  it("respects explicit category from caller (if in CATEGORY_VALUES)", () => {
+    const dir = freshDir();
+    logError(dir, { description: "x", category: "model" });
+    const entries = JSON.parse(readFileSync(join(dir, ".stw/error-registry.json"), "utf-8"));
+    assert.equal(entries[0].category, "model");
+  });
+
+  it("overrides invalid category value with heuristic", () => {
+    const dir = freshDir();
+    logError(dir, {
+      description: "parser regex indexOf",
+      tags: ["parser"],
+      category: "bogus-value",
+    });
+    const entries = JSON.parse(readFileSync(join(dir, ".stw/error-registry.json"), "utf-8"));
+    assert.ok(CATEGORY_VALUES.includes(entries[0].category));
+    assert.notEqual(entries[0].category, "bogus-value");
+  });
+
+  it("cleans slash-joined tags at logError time", () => {
+    const dir = freshDir();
+    logError(dir, { description: "x", tags: ["正则边界/贪婪回溯"] });
+    const entries = JSON.parse(readFileSync(join(dir, ".stw/error-registry.json"), "utf-8"));
+    assert.deepEqual(entries[0].tags, ["正则边界", "贪婪回溯"]);
+  });
+});
+
+describe("T17 — cleanRegistry (one-shot migrate)", () => {
+  it("returns total=0 and no backup when registry file missing", () => {
+    const dir = freshDir();
+    const r = cleanRegistry(dir);
+    assert.equal(r.total, 0);
+    assert.equal(r.backupPath, null);
+  });
+
+  it("dry-run reports counts without writing file or creating backup", () => {
+    const dir = freshDir();
+    const path = join(dir, ".stw/error-registry.json");
+    writeFileSync(path, JSON.stringify([
+      { id: "e1", description: "parser", rootCause: "regex", tags: ["正则边界/贪婪回溯", "·"] },
+    ]));
+    const before = readFileSync(path, "utf-8");
+    const r = cleanRegistry(dir, { dryRun: true });
+    assert.equal(r.dryRun, true);
+    assert.equal(r.total, 1);
+    assert.ok(r.cleanedTagCount >= 1);
+    assert.ok(r.backfilledCategory >= 1);
+    assert.equal(r.backupPath, null);
+    const after = readFileSync(path, "utf-8");
+    assert.equal(before, after, "dry-run must not modify the file");
+  });
+
+  it("actual run creates backup + rewrites registry + backfills category", () => {
+    const dir = freshDir();
+    const path = join(dir, ".stw/error-registry.json");
+    writeFileSync(path, JSON.stringify([
+      { id: "e1", description: "parser regex indexOf", rootCause: "锚点", tags: ["parser/regex", "·"] },
+      { id: "e2", description: "记忆幻觉 工具参数", tags: ["记忆幻觉", "工具参数"] },
+    ]));
+    const r = cleanRegistry(dir);
+    assert.equal(r.total, 2);
+    assert.ok(r.backfilledCategory === 2);
+    assert.ok(r.backupPath && existsSync(r.backupPath), "expected backup file");
+    const out = JSON.parse(readFileSync(path, "utf-8"));
+    assert.ok(CATEGORY_VALUES.includes(out[0].category));
+    assert.ok(CATEGORY_VALUES.includes(out[1].category));
+    assert.ok(!out[0].tags.includes("·"));
+    assert.ok(out[0].tags.includes("parser"));
+    assert.ok(out[0].tags.includes("regex"));
+  });
+
+  it("is idempotent — running a second time leaves file byte-identical", () => {
+    const dir = freshDir();
+    const path = join(dir, ".stw/error-registry.json");
+    writeFileSync(path, JSON.stringify([
+      { id: "e1", description: "parser", tags: ["正则/边界", "·"] },
+    ]));
+    cleanRegistry(dir);
+    const first = readFileSync(path, "utf-8");
+    cleanRegistry(dir);
+    const second = readFileSync(path, "utf-8");
+    assert.equal(first, second);
+  });
+});
+
+describe("T17 — findRelatedErrorsByTask groupByCategory", () => {
+  it("returns grouped object when opts.groupByCategory=true", () => {
+    const dir = freshDir();
+    logError(dir, { description: "parser regex indexOf 锚点", tags: ["parser"] });
+    logError(dir, { description: "记忆幻觉 工具参数 误用", tags: ["记忆幻觉"] });
+    const r = findRelatedErrorsByTask(dir, "parser 记忆", 5, { groupByCategory: true });
+    assert.ok(r.harness.length >= 1 || r.model.length >= 1);
+    assert.ok("harness" in r && "model" in r && "description" in r && "unknown" in r);
+  });
+
+  it("returns flat array by default (backward compatible)", () => {
+    const dir = freshDir();
+    logError(dir, { description: "parser regex", tags: ["parser"] });
+    const r = findRelatedErrorsByTask(dir, "parser");
+    assert.ok(Array.isArray(r));
+  });
+});
+
+describe("T17 — getErrorInsights byCategory", () => {
+  it("aggregates category counts", () => {
+    const dir = freshDir();
+    logError(dir, { description: "parser regex indexOf", tags: ["parser"] });
+    logError(dir, { description: "记忆幻觉 工具参数", tags: ["记忆幻觉"] });
+    const i = getErrorInsights(dir);
+    assert.ok(i.byCategory);
+    assert.ok(i.byCategory.harness >= 1 || i.byCategory.model >= 1);
+  });
+
+  it("returns undefined byCategory when registry empty (back-compat)", () => {
+    const dir = freshDir();
+    const i = getErrorInsights(dir);
+    assert.equal(i.byCategory, undefined);
   });
 });
