@@ -269,7 +269,7 @@ describe("File Writer — Claude Code integration", () => {
     const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
     assert.equal(manifest.skills, "./skills/");
 
-    for (const skill of ["using-stw", "stw-investigation", "stw-focus", "stw-lockdown", "stw-verification", "stw-summary"]) {
+    for (const skill of ["using-stw", "stw-investigation", "stw-focus", "stw-lockdown", "stw-verification", "stw-summary", "stw-work-methods"]) {
       const skillPath = join(dir, "skills", skill, "SKILL.md");
       assert.ok(existsSync(skillPath), `missing native skill: ${skill}`);
       const content = readFileSync(skillPath, "utf-8");
