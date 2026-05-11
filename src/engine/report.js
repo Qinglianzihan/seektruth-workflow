@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { logError } from "./error-registry.js";
 import { detectDocDrift, formatDocDriftOutput } from "./doc-drift.js";
 import { bumpAuditCounter } from "./audit.js";
+import { checkEvidenceLedger } from "./evidence.js";
 
 const REPORTS_DIR = ".stw/reports";
 
@@ -45,6 +46,29 @@ export function archiveReport(rootDir) {
     ingested += 1;
   }
 
+  let predictionVerdict;
+  try {
+    const v = checkEvidenceLedger(rootDir);
+    predictionVerdict = {
+      total: v.total,
+      confirmed: v.confirmed,
+      mismatchCount: v.mismatches.length,
+      skipped: v.skipped,
+    };
+    for (const m of v.mismatches) {
+      logError(rootDir, {
+        description: `预测未兑现: ${m.file} — 预测 "${m.predicted}" / 实际 "${m.actual}"`,
+        rootCause: m.reason || "predicted ≠ actual",
+        resolution: "复盘当时的变更计划，更新后续 Analysis §4.5 的预测颗粒度",
+        tags: ["falsifiable", "mismatch", "t12"],
+        phase: 5,
+      });
+      ingested += 1;
+    }
+  } catch {
+    predictionVerdict = undefined;
+  }
+
   let docDrift;
   try {
     const d = detectDocDrift(rootDir);
@@ -65,7 +89,15 @@ export function archiveReport(rootDir) {
     auditPrompt = undefined;
   }
 
-  return { ok: true, path: reportPath, name: reportName, ingested, docDrift, auditPrompt };
+  return {
+    ok: true,
+    path: reportPath,
+    name: reportName,
+    ingested,
+    docDrift,
+    auditPrompt,
+    predictionVerdict,
+  };
 }
 
 /**

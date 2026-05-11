@@ -46,6 +46,68 @@ describe("Report — archiveReport", () => {
     assert.ok(existsSync(second.path));
     assert.equal(listReports(dir).length, 2);
   });
+
+  it("T12: no §7 ledger → predictionVerdict zero values, no extra ingest", () => {
+    const dir = freshDir();
+    writeSummary(dir, "# S\n\n| **任务** | X |\n内容");
+    const result = archiveReport(dir);
+    assert.equal(result.ok, true);
+    assert.ok(result.predictionVerdict);
+    assert.equal(result.predictionVerdict.total, 0);
+    assert.equal(result.predictionVerdict.confirmed, 0);
+    assert.equal(result.predictionVerdict.mismatchCount, 0);
+    assert.equal(result.ingested, 0);
+
+    const registryPath = join(dir, ".stw", "error-registry.json");
+    const registry = existsSync(registryPath)
+      ? JSON.parse(readFileSync(registryPath, "utf-8"))
+      : [];
+    assert.equal(registry.length, 0);
+  });
+
+  it("T12: §7 with confirmed rows → confirmed counted, no mismatch in registry", () => {
+    const dir = freshDir();
+    writeSummary(dir,
+      "# S\n\n| **任务** | X |\n内容\n\n" +
+      "## 7. 证据账本\n\n" +
+      "| 文件 | 预测 | 实际 | 判定 |\n" +
+      "| :--- | :--- | :--- | :--- |\n" +
+      "| src/a.js | done a | done a | 兑现 |\n" +
+      "| src/b.js | done b | done b | 兑现 |\n"
+    );
+    const result = archiveReport(dir);
+    assert.equal(result.ok, true);
+    assert.equal(result.predictionVerdict.total, 2);
+    assert.equal(result.predictionVerdict.confirmed, 2);
+    assert.equal(result.predictionVerdict.mismatchCount, 0);
+  });
+
+  it("T12: §7 with 不兑现 → logError fired, ingested bumped, tag 'falsifiable'", () => {
+    const dir = freshDir();
+    writeSummary(dir,
+      "# S\n\n| **任务** | X |\n内容\n\n" +
+      "## 7. 证据账本\n\n" +
+      "| 文件 | 预测 | 实际 | 判定 |\n" +
+      "| :--- | :--- | :--- | :--- |\n" +
+      "| src/a.js | 新增 120 行 | 新增 250 行 | 不兑现 |\n" +
+      "| src/b.js | 3 函数 | 3 函数 | 兑现 |\n"
+    );
+    const result = archiveReport(dir);
+    assert.equal(result.ok, true);
+    assert.equal(result.predictionVerdict.total, 2);
+    assert.equal(result.predictionVerdict.confirmed, 1);
+    assert.equal(result.predictionVerdict.mismatchCount, 1);
+    assert.equal(result.ingested, 1, "mismatch row must be logError'd into registry");
+
+    const registryPath = join(dir, ".stw", "error-registry.json");
+    const registry = JSON.parse(readFileSync(registryPath, "utf-8"));
+    assert.equal(registry.length, 1);
+    assert.ok(registry[0].tags.includes("falsifiable"));
+    assert.ok(registry[0].tags.includes("mismatch"));
+    assert.ok(registry[0].tags.includes("t12"));
+    assert.ok(registry[0].description.includes("src/a.js"));
+    assert.equal(registry[0].phase, 5);
+  });
 });
 
 describe("Report — listReports", () => {

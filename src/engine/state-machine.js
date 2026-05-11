@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { parseAttackZones, checkFileBounds, checkChangePlan, checkDepsChange } from "./lockdown.js";
 import { assessConfidence } from "./confidence-gate.js";
 import { appendEvent } from "./events.js";
+import { checkEvidence } from "./evidence.js";
 
 export const PHASES = [
   { id: 1, name: "调查研究", nameEn: "Investigate", deliverable: ".stw/Analysis-Template.md" },
@@ -281,6 +282,18 @@ export function advancePhase(rootDir) {
     });
     if (deps.warning) {
       console.log(`\n  ⚠️  ${deps.warning}`);
+    }
+
+    const evidence = checkEvidence(rootDir);
+    appendEvent(rootDir, "gate.evidence", {
+      ok: evidence.ok,
+      coverage: evidence.coverage,
+      total: evidence.total,
+      filled: evidence.filled,
+      missingCount: evidence.missing.length,
+    });
+    if (evidence.warning) {
+      console.log(`\n  ⚠️  ${evidence.warning}`);
     }
   }
 

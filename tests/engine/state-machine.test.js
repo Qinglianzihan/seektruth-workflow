@@ -722,3 +722,67 @@ describe("State Machine — reviewer gate (phase 4→5)", () => {
     assert.equal(result.ok, true);
   });
 });
+
+describe("State Machine — evidence gate (phase 3→4, T12)", () => {
+  function setupPhase3(dir, extraAnalysis = "") {
+    writePassingAnalysis(dir);
+    // Optionally overwrite the §4.5 section with a four-col plan
+    if (extraAnalysis) {
+      writeStwFile(dir, "Analysis-Template.md", extraAnalysis);
+    }
+    writeStwFile(dir, "STW-Workspace.md", "# W\n<!-- ATTACK_ZONE: src/* -->");
+    writePassingPlannerReport(dir);
+    writeStwFile(dir, "lockdown.json", "{}");
+    startSession(dir);
+    advancePhase(dir); // → 2
+    advancePhase(dir); // → 3
+  }
+
+  it("emits gate.evidence on phase 3→4 and never blocks (three-col legacy analysis)", () => {
+    const dir = freshDir();
+    setupPhase3(dir); // writePassingAnalysis uses a 3-col §4.5 table
+    const result = advancePhase(dir); // 3→4
+    assert.equal(result.ok, true);
+    assert.equal(result.phase.id, 4);
+
+    const events = readEventsForTest(dir);
+    const ev = events.find((e) => e.type === "gate.evidence");
+    assert.ok(ev, "gate.evidence event must be emitted");
+    assert.equal(ev.data.ok, true);
+    // coverage might be "0/0" (zero rows) or "0/N" (legacy rows) — both valid for non-blocking
+    assert.ok(typeof ev.data.coverage === "string");
+  });
+
+  it("gate.evidence payload tracks 4-col plan with partial coverage", () => {
+    const dir = freshDir();
+    const analysis = "## 0. 战前评估\n9/10\n\n" +
+      "## 0.5 需求澄清 — 向用户提问\n内容够长满足 20 字符\n\n| # | 问题 | 用户回答 |\n| :--- | :--- | :--- |\n| 1 | 要做到多深？ | 完整实现 |\n\n" +
+      "## 1. 任务背景\nThis is a test task background describing the problem to solve in enough detail.\n\n" +
+      "## 1.0 表层需求 → 深层需求\nSurface vs deep needs identified with enough text.\n\n" +
+      "## 1.5 项目风格侦察\nProject patterns scanned with enough text here.\n\n| 维度 | 既有模式 | 示例出处 |\n| :--- | :--- | :--- |\n| 命名规范 | camelCase | (x.js:1) |\n\n" +
+      "## 1.6 外部调研\nExternal research done with enough content here to pass the gate.\n\n| 方向 | 搜索结果 | 可借鉴的点 |\n| :--- | :--- | :--- |\n| 毛选 | 实践论 | 实践检验 |\n\n" +
+      "## 2.1 去粗\nFiltered noise with sufficient content here yes.\n\n" +
+      "## 2.2 取精\nKey extraction with sufficient content here yes.\n\n" +
+      "## 2.3 去伪\nDispel illusions with sufficient content here yes.\n\n" +
+      "## 2.4 存真\nTruth preservation (x.js:1) and (y.js:2) done.\n\n" +
+      "## 2.5 由此及彼\nCall chain traced with sufficient content here.\n\n" +
+      "## 2.6 由表及里\nRoot cause with sufficient content here yes.\n\n" +
+      "## 3. 主要矛盾分析\nCore contradiction identified.\n\n" +
+      "## 4. 初步方案\nProposed solution approach.\n\n" +
+      "## 4.5 变更计划声明\n\n" +
+      "| 文件 | 改动类型 | 理由 | 预测 |\n" +
+      "| :--- | :--- | :--- | :--- |\n" +
+      "| src/a.js | fix | reason a | predicted a |\n" +
+      "| src/b.js | create | reason b | |\n";
+    setupPhase3(dir, analysis);
+    const result = advancePhase(dir); // 3→4
+    assert.equal(result.ok, true);
+
+    const events = readEventsForTest(dir);
+    const ev = events.find((e) => e.type === "gate.evidence");
+    assert.ok(ev);
+    assert.equal(ev.data.total, 2);
+    assert.equal(ev.data.filled, 1);
+    assert.equal(ev.data.missingCount, 1);
+  });
+});

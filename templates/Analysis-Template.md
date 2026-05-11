@@ -152,10 +152,11 @@
 ## 4.5 变更计划声明
 
 <!-- 列出本次任务将修改的每个文件及理由。修改未列出的文件即为违规。 -->
+<!-- 「预测」列：本次变更预期达到什么可验证效果（done-condition）。phase 5 归档时在 Summary §7 对账，不兑现自动入 error-registry。-->
 
-| 文件 | 改动类型 | 理由 |
-| :--- | :--- | :--- |
-| | fix / refactor / test / docs / deps | |
+| 文件 | 改动类型 | 理由 | 预测 |
+| :--- | :--- | :--- | :--- |
+| | fix / refactor / test / docs / deps | | <!-- done-condition，可验证 --> |
 
 ---
 
