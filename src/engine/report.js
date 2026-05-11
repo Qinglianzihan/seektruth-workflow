@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync, readdirSync, mkdirSync, copyFi
 import { join } from "node:path";
 import { logError } from "./error-registry.js";
 import { detectDocDrift, formatDocDriftOutput } from "./doc-drift.js";
+import { bumpAuditCounter } from "./audit.js";
 
 const REPORTS_DIR = ".stw/reports";
 
@@ -56,7 +57,15 @@ export function archiveReport(rootDir) {
     docDrift = undefined;
   }
 
-  return { ok: true, path: reportPath, name: reportName, ingested, docDrift };
+  let auditPrompt;
+  try {
+    const bumped = bumpAuditCounter(rootDir);
+    auditPrompt = bumped.prompt || undefined;
+  } catch {
+    auditPrompt = undefined;
+  }
+
+  return { ok: true, path: reportPath, name: reportName, ingested, docDrift, auditPrompt };
 }
 
 /**

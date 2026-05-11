@@ -21,7 +21,7 @@ import { getRelatedErrors, getAllErrors, findRelatedErrorsByTask } from "../src/
 import { deepScanMcp } from "../src/scout/mcp-deep-scanner.js";
 import { runCheck, listGates } from "../src/engine/check.js";
 import { runHook } from "../src/engine/hook.js";
-import { readEvents } from "../src/engine/events.js";
+import { readEvents, appendEvent } from "../src/engine/events.js";
 import { formatTimeline, findRootCause, summarizeEvent } from "../src/engine/replay.js";
 import { injectSimilarCases } from "../src/engine/analysis-injector.js";
 import { ratchetError, getRatchetRules, removeRatchetRule } from "../src/engine/ratchet.js";
@@ -29,6 +29,7 @@ import { injectQuote } from "../src/engine/quote-injector.js";
 import { PHASE_STORIES, ERROR_FRIENDLY, STATUS_EMPTY, RATCHET_ADDED, RATCHET_REMOVED, RATCHET_EMPTY, ATTACK_ZONE_CLEANUP_HINT, REPLAY_EMPTY, REPLAY_TIMELINE_HEADER, REPLAY_ROOT_CAUSE_NONE, REPLAY_ROOT_CAUSE_HEADER, REPLAY_ROOT_CAUSE_FAILURE, REPLAY_ROOT_CAUSE_CONTEXT, REPLAY_ROTATED_HINT } from "../src/engine/messages.js";
 import { startForge, getForgeStatus, inspectForgeAgent, advanceForge, acceptForge, abortForge, runForgeAgents, AGENTS } from "../src/engine/forge.js";
 import { detectDocDrift } from "../src/engine/doc-drift.js";
+import { auditConstraints, formatAuditOutput } from "../src/engine/audit.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8"));
@@ -54,6 +55,7 @@ const help = () => {
   console.log("  check          运行所有质量门禁 (lint + ratchet + test)");
   console.log("  hook run       由 AI 工具 hook 触发的轻量体检（lint + 阶段 3+ 范围检查）");
   console.log("  replay         回放 .stw/events.jsonl 事件流 (--tail / --type / --task / --root-cause / --json)");
+  console.log("  audit          审计五大核心约束在最近 N 任务的触发情况 (--limit N，默认 10)");
   console.log("  ratchet        管理 Ratchet 规则 (list/add/remove)");
   console.log("  forge          需求炼金炉：多 agent 需求讨论状态机");
 };
@@ -477,6 +479,9 @@ const cmdReport = () => {
         console.log(`\n📚 归档后派生文档反向校验：一致`);
       }
     }
+    if (result.auditPrompt) {
+      console.log(`\n📋 ${result.auditPrompt}`);
+    }
   } catch (err) {
     console.error(`\n❌ report 失败: ${err.message}`);
     process.exit(1);
@@ -597,6 +602,30 @@ const cmdHook = () => {
 
   if (result.stderr) process.stderr.write(result.stderr + "\n");
   process.exit(result.exitCode);
+};
+
+const cmdAudit = async () => {
+  const rootDir = process.cwd();
+  const args = process.argv.slice(3);
+  const limitIdx = args.indexOf("--limit");
+  let limit;
+  if (limitIdx !== -1) {
+    const raw = args[limitIdx + 1];
+    const parsed = parseInt(raw, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      console.error(`\n❌ --limit 需要一个 >= 1 的整数（收到 "${raw}"）`);
+      process.exit(1);
+    }
+    limit = parsed;
+  }
+  const result = await auditConstraints(rootDir, limit !== undefined ? { limit } : {});
+  console.log(formatAuditOutput(result));
+  appendEvent(rootDir, "audit.run", {
+    actualTasks: result.window?.actualTasks ?? 0,
+    deadWeightCount: (result.suspectedDeadWeight || []).length,
+    skipped: Boolean(result.skipped),
+  });
+  if (!result.ok) process.exit(1);
 };
 
 const cmdReplay = async () => {
@@ -946,6 +975,12 @@ switch (command) {
   case "replay":
     cmdReplay().catch((err) => {
       console.error(`\n❌ replay 失败: ${err.message}`);
+      process.exit(1);
+    });
+    break;
+  case "audit":
+    cmdAudit().catch((err) => {
+      console.error(`\n❌ audit 失败: ${err.message}`);
       process.exit(1);
     });
     break;
