@@ -20,58 +20,31 @@
 
 ## 快速安装
 
-不想手动配置？，按你的需求复制其中一个提示词给 Codex / Claude Code：
-
-**A. 只安装求是工作流**
+把下面这段话发给你的 AI（Claude Code / Codex / Cursor 等）：
 
 ```text
-请使用这个开源项目配置求是工作流：
-https://github.com/Qinglianzihan/seektruth-workflow
+请帮我安装求是工作流（SeekTruth Workflow）。
 
-目标：只安装/更新 seektruth-workflow，在当前项目里运行 stw init，选择当前 AI 工具，并告诉我以后如何用自然语言启动。
+参考仓库：https://github.com/Qinglianzihan/seektruth-workflow
+
+流程：
+1. 确认当前系统 Node.js ≥ 18（node -v）。不满足请先告诉我。
+2. 跑 npm install -g seektruth-workflow（已装过就用 npm update -g seektruth-workflow 升级）。
+3. 跑 stw install-skills —— 这一步会：
+   (a) 侦察我电脑上装了哪些 AI 编程工具（Claude Code / Codex / Cursor / Cline / Windsurf / Copilot / Aider 等）
+   (b) 把检测结果列给我、让我选一个
+   (c) 把 9 个原生 skill 装到用户全局目录（Claude Code 是 ~/.claude/skills/stw-*/；其他工具会明确说明为什么跳过，因为 Skill 是 Claude Code 专属机制）
+4. cd 到我当前项目根，跑 stw init —— 写入本项目的 .stw/ 工作流文件和 AI 工具对应的规则文件（CLAUDE.md / AGENTS.md / .cursorrules 等）。
+5. 告诉我：以后在对话里说"启动求是工作流，帮我 XXX"就能自动按五阶段纪律开始新任务。
 ```
 
-**B. 安装 RTK + 求是工作流**
-
-```text
-请同时使用这两个开源项目配置 RTK 和求是工作流：
-
-RTK：
-https://github.com/rtk-ai/rtk
-用途：RTK 是更省 token 的 AI 编程命令层，可用 rtk stw ... 调用求是工作流。
-
-求是工作流：
-https://github.com/Qinglianzihan/seektruth-workflow
-
-目标：安装/更新 RTK 和 seektruth-workflow，在当前项目里运行 stw init，选择当前 AI 工具。配置完成后，优先使用 rtk stw ...，并告诉我以后如何用自然语言启动。
-```
-
-AI 会完成：安装 CLI、初始化 `.stw/`、注入 Claude Code / Codex 需要的规则和 skills。之后你只要说：
+AI 会完成：安装 CLI、装全局 skill、初始化 `.stw/`、注入 Claude Code / Codex 等工具需要的规则。之后你只要说：
 
 ```text
 启动求是工作流，帮我处理：XXX
 ```
 
 > 项目显示名叫「求是工作流」；npm 包名和命令名保持小写：`seektruth-workflow`、`stw`。
-
-### 手动安装
-
-要求 Node.js ≥ 18。
-
-```bash
-npm install -g seektruth-workflow
-cd your-project
-stw init
-stw start --desc "你的任务描述"
-```
-
-更新：
-
-```bash
-npm update -g seektruth-workflow
-```
-
-`npm install` 只安装 `stw` CLI；`stw init` 才会检测 Claude/Codex/Cursor 等工具，并把工作流配置写入当前项目。
 
 ---
 

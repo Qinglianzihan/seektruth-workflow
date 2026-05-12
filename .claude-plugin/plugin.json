@@ -1,6 +1,6 @@
 {
   "name": "seektruth-workflow",
-  "version": "0.4.1",
+  "version": "0.5.1",
   "description": "Native skills for enforcing the SeekTruth five-stage workflow in Claude Code.",
   "author": {
     "name": "SeekTruth Workflow"

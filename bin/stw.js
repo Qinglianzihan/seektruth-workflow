@@ -22,6 +22,7 @@ import { deepScanMcp } from "../src/scout/mcp-deep-scanner.js";
 import { runCheck, listGates } from "../src/engine/check.js";
 import { runHook } from "../src/engine/hook.js";
 import { runStopHook, readStdinSafe } from "../src/engine/stop-hook.js";
+import { installSkills } from "../src/engine/install-skills.js";
 import { readEvents, appendEvent } from "../src/engine/events.js";
 import { formatTimeline, findRootCause, summarizeEvent } from "../src/engine/replay.js";
 import { injectSimilarCases } from "../src/engine/analysis-injector.js";
@@ -46,6 +47,7 @@ const help = () => {
   console.log("Commands:");
   console.log("  init           初始化求是工作流");
   console.log("  init --deep    初始化 + 深度扫描 MCP 工具详情");
+  console.log("  install-skills 把 9 个 native skill 装到用户全局目录（~/.claude/skills/stw-*/，Claude Code 专用）");
   console.log("  start          开始新任务");
   console.log("  status         查看当前阶段和进度");
   console.log("  next           推进到下一阶段");
@@ -136,6 +138,57 @@ const cmdInit = async (deep) => {
   }
   console.log(injectQuote(rootDir));
 };
+
+const cmdInstallSkills = async () => {
+  const args = process.argv.slice(3);
+  const toolIdx = args.indexOf("--tool");
+  const toolArg = toolIdx !== -1 && args[toolIdx + 1] ? args[toolIdx + 1] : null;
+  const force = args.includes("--force");
+  const dryRun = args.includes("--dry-run");
+
+  let tool = toolArg;
+  if (!tool) {
+    const detected = detectAiTools();
+    const choice = await selectAiTools(detected);
+    if (choice.length === 0) {
+      console.log("  ⏭️ 未选择任何工具，跳过。");
+      return;
+    }
+    if (choice.length > 1) {
+      console.log(`  📋 选中多个工具；install-skills 每次只装一个，按顺序依次执行。\n`);
+    }
+    for (const t of choice) {
+      await runInstallSkillsFor(t.name, { force, dryRun });
+    }
+    return;
+  }
+
+  await runInstallSkillsFor(tool, { force, dryRun });
+};
+
+async function runInstallSkillsFor(toolName, { force, dryRun }) {
+  console.log(`\n🔧 安装 skill 到用户全局目录（${toolName}）...${dryRun ? " [dry-run]" : ""}`);
+  const result = installSkills({ tool: toolName, force, dryRun });
+  if (result.skipped) {
+    console.log(`  ⏭️ 已跳过：${result.reason}`);
+    return;
+  }
+  if (!result.ok) {
+    console.error(`  ❌ ${result.error}`);
+    if (result.skippedDirs && result.skippedDirs.length > 0) {
+      console.error(`\n  已跳过的目录：${result.skippedDirs.join(", ")}`);
+    }
+    process.exit(1);
+  }
+  console.log(`  ✅ 装好了 ${result.installed.length} 个 skill → ${result.targetDir}`);
+  for (const s of result.installed) console.log(`     · ${s}`);
+  if (dryRun) {
+    console.log(`\n  （dry-run 未真正写文件）`);
+    return;
+  }
+  console.log(`\n  Claude Code 下次启动时会扫到这些 skill。`);
+  console.log(`  卸载：rm -rf ${result.installed.map((s) => `${result.targetDir}/${s}`).join(" ")}`);
+}
 
 const cmdStatus = () => {
   const rootDir = process.cwd();
@@ -1050,6 +1103,12 @@ switch (command) {
   case "init":
     cmdInit(process.argv[3] === "--deep").catch((err) => {
       console.error(`\n❌ init 失败: ${err.message}`);
+      process.exit(1);
+    });
+    break;
+  case "install-skills":
+    cmdInstallSkills().catch((err) => {
+      console.error(`\n❌ install-skills 失败: ${err.message}`);
       process.exit(1);
     });
     break;

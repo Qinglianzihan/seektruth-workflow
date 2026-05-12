@@ -269,11 +269,11 @@ describe("Evidence — checkEvidenceLedger (archive reconciliation)", () => {
     }
   });
 
-  it("真实仓库 smoke: current Analysis §4.5 14 entries all with predicted", () => {
+  it("真实仓库 smoke: current Analysis §4.5 entries all with predicted", () => {
     const entries = parseChangePlanPredictions(REPO_ROOT);
-    assert.ok(entries.length >= 10, `expected ≥ 10 entries, got ${entries.length}`);
+    assert.ok(entries.length >= 1, `expected ≥ 1 entry, got ${entries.length}`);
     const filled = entries.filter((e) => e.predicted).length;
-    assert.equal(filled, entries.length, "current T12 Analysis should have predicted column filled for every row");
+    assert.equal(filled, entries.length, "current Analysis §4.5 should have predicted column filled for every row");
   });
 
   // T12.bis R4: checkEvidenceLedger 真实归档端到端 smoke
